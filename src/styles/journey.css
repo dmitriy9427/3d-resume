@@ -1,3 +1,32 @@
+/* Прелоадер: экран загрузки и огненный канвас поверх сцены */
+.boot.is-transparent {
+  background: transparent;
+}
+.boot.is-burning .boot__mark,
+.boot.is-burning .boot__ring,
+.boot.is-burning .boot__text {
+  opacity: 0;
+  transition: opacity 0.5s;
+}
+.boot.is-burning:not(.is-transparent) {
+  opacity: 0;
+  transition: opacity 0.45s;
+}
+.boot__mark {
+  font-variant-numeric: tabular-nums;
+}
+.preloader__fire {
+  position: fixed;
+  inset: 0;
+  z-index: 29;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  opacity: 0;
+}
+.preloader__fire.is-on {
+  opacity: 1;
+}
 .stage canvas {
   cursor: grab;
   touch-action: pan-y;

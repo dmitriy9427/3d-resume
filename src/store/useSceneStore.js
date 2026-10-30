@@ -3,6 +3,9 @@ import { create } from "zustand";
 export const useSceneStore = create((set) => ({
   activeStop: 0,
   setActiveStop: (activeStop) => set({ activeStop }),
+  // сцена построена и несколько кадров отрисовано — прелоадер можно «сжигать»
+  ready: false,
+  setReady: (ready) => set({ ready }),
 }));
 
 // Прогресс прокрутки: target — по странице, current — со сглаживанием.

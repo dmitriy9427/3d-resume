@@ -1,15 +1,29 @@
-import { Canvas } from "@react-three/fiber";
-import { Suspense } from "react";
+import { Canvas, useFrame } from "@react-three/fiber";
+import { Suspense, useRef } from "react";
 import IntroScene from "../scenes/IntroScene";
 import Sky from "../scenes/Sky";
 import Street from "../scenes/Street";
 import CameraRig from "../scenes/CameraRig";
 import Overlay from "./Overlay";
+import Preloader from "./Preloader";
+import { useSceneStore } from "../store/useSceneStore";
 import { INTRO_CAM } from "../utils/cameraPath";
 import "../styles/journey.css";
 
 // Высота прокрутки: чем больше, тем медленнее «идём».
 const SCROLL_HEIGHT = "1500vh";
+
+// Сообщает «сцена готова»: компонент монтируется, только когда Suspense
+// дождался всех моделей; ждём ещё 4 кадра — за них компилируются шейдеры.
+function ReadySignal() {
+  const frames = useRef(0);
+  useFrame(() => {
+    if (frames.current < 4 && ++frames.current === 4) {
+      useSceneStore.getState().setReady(true);
+    }
+  });
+  return null;
+}
 
 export default function ResumeCanvas() {
   const small = typeof window !== "undefined" && window.innerWidth < 768;
@@ -27,6 +41,7 @@ export default function ResumeCanvas() {
           gl={{ antialias: !small, powerPreference: "high-performance" }}
         >
           <Suspense fallback={null}>
+            <ReadySignal />
             <CameraRig />
             <Sky stars={small ? 900 : 1800} />
             <Street />
@@ -34,6 +49,7 @@ export default function ResumeCanvas() {
           </Suspense>
         </Canvas>
       </div>
+      <Preloader />
       <Overlay />
       <div style={{ height: SCROLL_HEIGHT }} aria-hidden="true" />
     </>

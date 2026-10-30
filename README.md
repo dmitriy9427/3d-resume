@@ -39,4 +39,5 @@ Astro · React · three.js через `@react-three/fiber` и `@react-three/drei
 | здания, дорога, море, фонари, вывески | `src/scenes/Street.jsx` |
 | деревья, скамейки, машины | `src/scenes/Props.jsx` + `blender/make_assets.py` |
 | комната, экраны, свет в комнате | `src/scenes/IntroScene.jsx` + `blender/make_assets.py` |
+| прелоадер с «прожиганием» | `src/components/Preloader.jsx` (`?burn=12000` — медленно, для настройки) |
 | карточки, подсказки, мобильная вёрстка | `src/components/Overlay.jsx` + `src/styles/journey.css` |
