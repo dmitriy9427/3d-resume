@@ -1,7 +1,6 @@
-import { Box, Plane, Html, useTexture } from "@react-three/drei";
+import { Box, Plane, useTexture } from "@react-three/drei";
 import { useEffect, useMemo } from "react";
 import * as THREE from "three";
-import { SKILLS, PROJECTS, CONTACTS } from "../data/resume";
 
 // один тайл текстуры кирпича ≈ столько мировых юнитов, чтобы кирпичи были
 // одного размера на всех сегментах стены у окна, несмотря на разную ширину/высоту
@@ -41,30 +40,6 @@ const backWallSegments = [
     y: (WIN_TOP + WIN_BOTTOM) / 2,
   },
 ];
-
-// карточки резюме висят прямо на стене по бокам от окна
-const [, , leftWallSeg, rightWallSeg] = backWallSegments;
-const CARD_Z = ROOM_Z + 0.05;
-
-const cardStyle = {
-  width: "180px",
-  background: "rgba(10, 20, 40, 0.55)",
-  border: "1px solid rgba(120, 180, 255, 0.35)",
-  borderRadius: "12px",
-  padding: "1em",
-  color: "#eaf6ff",
-  fontFamily: "system-ui, sans-serif",
-  fontSize: "13px",
-  lineHeight: 1.4,
-  backdropFilter: "blur(4px)",
-};
-
-const cardHeadingStyle = {
-  margin: "0 0 0.5em",
-  fontSize: "1.05em",
-  fontWeight: 600,
-  letterSpacing: "0.02em",
-};
 
 // Текстуры генерируются процедурно на canvas: загруженные через TextureLoader
 // файлы (JPEG/PNG, в т.ч. с Poly Haven) в этом WebGL-окружении надёжно ловят
@@ -260,7 +235,7 @@ export default function IntroScene() {
         position={[0, 2, -1.5]}
         color="#6f93ff"
         intensity={16}
-        distance={0}
+        distance={14}
         decay={1.4}
       />
       {/* подсветка от окна, имитирует свет звёзд/города */}
@@ -268,50 +243,10 @@ export default function IntroScene() {
         position={[0, 2.2, -3.3]}
         color="#8fb4ff"
         intensity={30}
-        distance={0}
+        distance={14}
         decay={1.4}
       />
 
-      {/* карточки резюме на стене слева от окна */}
-      <Html
-        position={[leftWallSeg.x, leftWallSeg.y, CARD_Z]}
-        center
-        style={cardStyle}
-      >
-        <h3 style={cardHeadingStyle}>Навыки</h3>
-        <ul style={{ margin: 0, paddingLeft: "1.1em" }}>
-          {SKILLS.map((s) => (
-            <li key={s}>{s}</li>
-          ))}
-        </ul>
-      </Html>
-
-      {/* карточки резюме на стене справа от окна */}
-      <Html
-        position={[rightWallSeg.x, rightWallSeg.y, CARD_Z]}
-        center
-        style={cardStyle}
-      >
-        <h3 style={cardHeadingStyle}>Проекты</h3>
-        {PROJECTS.map((p) => (
-          <div key={p.title} style={{ marginBottom: "0.6em" }}>
-            <strong>{p.title}</strong>
-            <div style={{ opacity: 0.75, fontSize: "0.9em" }}>{p.desc}</div>
-          </div>
-        ))}
-
-        <h3 style={{ ...cardHeadingStyle, margin: "0.8em 0 0.5em" }}>
-          Контакты
-        </h3>
-        {CONTACTS.map((c) => (
-          <div key={c.label} style={{ marginBottom: "0.3em", fontSize: "0.9em" }}>
-            {c.label}:{" "}
-            <a href={c.href} style={{ color: "#66ccff" }}>
-              {c.value}
-            </a>
-          </div>
-        ))}
-      </Html>
     </>
   );
 }

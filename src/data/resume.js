@@ -1,15 +1,135 @@
-export const SKILLS = ["React", "Three.js", "TypeScript", "Node.js", "GLSL"];
-
-export const PROJECTS = [
-  { title: "Project One", desc: "Краткое описание проекта" },
-  { title: "Project Two", desc: "Краткое описание проекта" },
-];
-
-export const CONTACTS = [
-  { label: "Email", value: "you@example.com", href: "mailto:you@example.com" },
+// Остановки прогулки. side — на какой стороне улицы здание с вывеской
+// (null — комната, без здания). Тексты — из основного резюме.
+export const STOPS = [
   {
-    label: "GitHub",
-    value: "github.com/username",
-    href: "https://github.com/username",
+    id: "intro",
+    side: null,
+    kicker: "Frontend-разработчик",
+    title: "Дмитрий Рябов",
+    text: "Делаю быстрые и живые интерфейсы: от вёрстки до WebGL. Прокрутите вниз — выйдем из комнаты и прогуляемся по городу моих работ.",
+  },
+  {
+    id: "paraweb",
+    side: "left",
+    kicker: "Опыт · 2024 — сейчас",
+    title: "Paraweb",
+    text: "Вёрстка и фронтенд коммерческих сайтов, UI-киты на Astro + React + Storybook, анимации и WebGL, личные кабинеты на React.",
+    stack: "Astro · React · GSAP · Three.js",
+    accent: "#6aa9ff",
+  },
+  {
+    id: "miet",
+    side: "right",
+    kicker: "Сайт · 2025",
+    title: "МИЭТ",
+    text: "Разделы и блоки университетского сайта, таблицы, баннеры, адаптив.",
+    stack: "Pug · SCSS · GSAP",
+    href: "https://miet.ru",
+    accent: "#ffb457",
+  },
+  {
+    id: "bgsha",
+    side: "left",
+    kicker: "Сайт · 2025",
+    title: "Бурятская ГСХА",
+    text: "Поиск по сайту, баннеры, статьи, уведомление о cookies.",
+    stack: "Pug · SCSS · GSAP",
+    href: "https://bgsha.ru",
+    accent: "#7be0a4",
+  },
+  {
+    id: "medmol",
+    side: "right",
+    kicker: "Портал · 2026",
+    title: "Молодёжный портал ВолгГМУ",
+    text: "Плавные переходы между страницами, видео-слайдеры, календарь событий, формы.",
+    stack: "GSAP · Barba.js · Lenis",
+    href: "https://medmol.volgmed.ru",
+    accent: "#ff7aa8",
+  },
+  {
+    id: "potok",
+    side: "left",
+    kicker: "Пет-проект",
+    title: "Поток",
+    text: "AI-чат со стримингом.",
+    href: "https://dmitriy9427.github.io/potok/",
+    accent: "#6aa9ff",
+  },
+  {
+    id: "tropa",
+    side: "right",
+    kicker: "Пет-проект",
+    title: "Тропа",
+    text: "Планировщик путешествий.",
+    href: "https://dmitriy9427.github.io/tropa/",
+    accent: "#7be0a4",
+  },
+  {
+    id: "resonance",
+    side: "left",
+    kicker: "Пет-проект",
+    title: "Резонанс",
+    text: "Музыкальный визуализатор на WebGL и Web Audio.",
+    href: "https://dmitriy9427.github.io/resonance/",
+    accent: "#b48cff",
+  },
+  {
+    id: "konstruktor",
+    side: "right",
+    kicker: "Пет-проект",
+    title: "3D-конструктор",
+    text: "Конструктор WebGL-анимаций с экспортом кода.",
+    href: "https://dmitriy9427.github.io/konstruktor-3d/",
+    accent: "#ffb457",
+  },
+  {
+    id: "propusk",
+    side: "left",
+    kicker: "Пет-проект",
+    title: "Пропуск",
+    text: "Авторизация, сделанная как в продукте: JWT, 2FA, passkeys, OAuth 2.0 + PKCE. 62 теста.",
+    href: "https://dmitriy9427.github.io/propusk/",
+    accent: "#6aa9ff",
+  },
+  {
+    id: "prilavok",
+    side: "right",
+    kicker: "Пет-проект",
+    title: "Прилавок",
+    text: "Админка интернет-магазина с реальным временем: свой WebSocket-клиент, виртуальные таблицы. 138 тестов.",
+    href: "https://dmitriy9427.github.io/prilavok/",
+    accent: "#ff7aa8",
+  },
+  {
+    id: "skills",
+    side: "left",
+    kicker: "Навыки",
+    title: "Инструменты",
+    text: "HTML · SCSS · JavaScript · TypeScript · React · Next.js · Vue · Astro · GSAP · Three.js · GLSL · Storybook · Vitest",
+    accent: "#7be0a4",
+  },
+  {
+    id: "contacts",
+    side: "right",
+    kicker: "Контакты",
+    title: "Давайте поговорим",
+    text: "Открыт к проектам.",
+    links: [
+      { label: "dimich.94@yandex.ru", href: "mailto:dimich.94@yandex.ru" },
+      { label: "Telegram", href: "https://t.me/ryabov_29" },
+      { label: "GitHub", href: "https://github.com/dmitriy9427" },
+    ],
+    accent: "#ffb457",
   },
 ];
+
+// Для текстовой версии (/resume).
+export const SKILLS = STOPS.find((s) => s.id === "skills").text.split(" · ");
+export const PROJECTS = STOPS.filter((s) => s.href).map((s) => ({
+  title: s.title,
+  desc: s.text,
+}));
+export const CONTACTS = STOPS.find((s) => s.id === "contacts").links.map(
+  (l) => ({ label: l.label, value: l.label, href: l.href }),
+);

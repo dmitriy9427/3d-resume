@@ -1,35 +1,41 @@
-import { Canvas, useThree } from "@react-three/fiber";
-import { Suspense, useEffect } from "react";
+import { Canvas } from "@react-three/fiber";
+import { Suspense } from "react";
 import IntroScene from "../scenes/IntroScene";
-import Starfield from "../scenes/Starfield";
+import Sky from "../scenes/Sky";
+import Street from "../scenes/Street";
+import CameraRig from "../scenes/CameraRig";
+import Overlay from "./Overlay";
 import { INTRO_CAM } from "../utils/cameraPath";
+import "../styles/journey.css";
 
-// R3F по умолчанию делает camera.lookAt(0,0,0) для переданной через проп
-// камеры — без этого сцена смотрит не туда, куда нужно (вниз, в пол)
-function FixedCameraOrientation() {
-  const camera = useThree((state) => state.camera);
-  useEffect(() => {
-    camera.rotation.set(0, 0, 0);
-  }, [camera]);
-  return null;
-}
+// Высота прокрутки: чем больше, тем медленнее «идём».
+const SCROLL_HEIGHT = "1500vh";
 
 export default function ResumeCanvas() {
+  const small = typeof window !== "undefined" && window.innerWidth < 768;
   return (
     <>
-      <Canvas
-        camera={{
-          position: [INTRO_CAM.x, INTRO_CAM.y, INTRO_CAM.z],
-          fov: 55,
-        }}
-        style={{ width: "100vw", height: "100dvh", background: "#000000" }}
-      >
-        <Suspense fallback={null}>
-          <FixedCameraOrientation />
-          <Starfield />
-          <IntroScene />
-        </Suspense>
-      </Canvas>
+      <div className="stage">
+        <Canvas
+          dpr={[1, small ? 1.5 : 2]}
+          camera={{
+            position: [INTRO_CAM.x, INTRO_CAM.y, INTRO_CAM.z],
+            fov: 55,
+            near: 0.1,
+            far: 700,
+          }}
+          gl={{ antialias: !small, powerPreference: "high-performance" }}
+        >
+          <Suspense fallback={null}>
+            <CameraRig />
+            <Sky stars={small ? 900 : 1800} />
+            <Street />
+            <IntroScene />
+          </Suspense>
+        </Canvas>
+      </div>
+      <Overlay />
+      <div style={{ height: SCROLL_HEIGHT }} aria-hidden="true" />
     </>
   );
 }
