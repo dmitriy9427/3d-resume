@@ -387,6 +387,171 @@ def leafy_plant(base, pot_top, stem_m, leaf_ms, count=11, height=0.9, seed=1):
     return out
 
 
+import mathutils
+
+
+def screen_quad(name, c, r, u, w, h, color):
+    """Плоскость экрана с UV (в three на неё накладывается обои-текстура).
+    r — вектор «вправо» со стороны зрителя, u — «вверх»; нормаль = r × u."""
+    c, r, u = mathutils.Vector(c), mathutils.Vector(r), mathutils.Vector(u)
+    vs = [c - r * w / 2 - u * h / 2, c + r * w / 2 - u * h / 2, c + r * w / 2 + u * h / 2, c - r * w / 2 + u * h / 2]
+    me = bpy.data.meshes.new(name)
+    o = bpy.data.objects.new(name, me)
+    bpy.context.collection.objects.link(o)
+    me.from_pydata([tuple(v) for v in vs], [], [(0, 1, 2, 3)])
+    uv = me.uv_layers.new(name="UV")
+    for li, (a, b) in enumerate([(0, 0), (1, 0), (1, 1), (0, 1)]):
+        uv.data[li].uv = (a, b)
+    me.materials.append(mat(name + "_mat", color, 0.3, color, 1.5))
+    return o
+
+
+def laptop(cx, cy, zt, P, S):
+    """Тонкий ноутбук с подсвеченной клавиатурой, тачпадом и экраном с обоями."""
+    body = mat("lap_body", "#262932", 0.45, metal=0.3)
+    lid = mat("lap_lid", "#0d0f15", 0.4, metal=0.3)
+    glow = mat("kb_glow", "#2fe8d8", 0.5, "#2fe8d8", 3.0)
+    keycap = mat("keycap", "#090b10", 0.6)
+    pad = mat("trackpad", "#2a2d37", 0.5)
+    bz = zt + 0.009
+    P.append(box((0.84, 0.58, 0.018), (cx, cy, bz), body, bevel=0.006))
+    kz = zt + 0.0185
+    P.append(box((0.72, 0.25, 0.002), (cx, cy + 0.07, kz), glow))
+    for r in range(5):
+        y = cy + 0.17 - r * 0.047
+        if r < 4:
+            for c in range(13):
+                P.append(box((0.043, 0.038, 0.007), (cx - 0.31 + c * 0.0517, y, kz + 0.004), keycap))
+        else:
+            for c in list(range(0, 3)) + list(range(10, 13)):
+                P.append(box((0.043, 0.038, 0.007), (cx - 0.31 + c * 0.0517, y, kz + 0.004), keycap))
+            P.append(box((0.3, 0.038, 0.007), (cx, y, kz + 0.004), keycap))
+    P.append(box((0.3, 0.17, 0.002), (cx, cy - 0.185, kz), glow))
+    P.append(box((0.28, 0.15, 0.004), (cx, cy - 0.185, kz + 0.002), pad))
+    A = math.radians(12)
+    h = 0.54
+    yh, zh = cy + 0.29, zt + 0.018
+    centre = mathutils.Vector((cx, yh + (h / 2) * math.sin(A), zh + (h / 2) * math.cos(A)))
+    back = mathutils.Vector((0, math.cos(A), -math.sin(A)))
+    front = -back
+    P.append(box((0.84, 0.014, h), tuple(centre + back * 0.007), lid, rot=(-A, 0, 0), bevel=0.004))
+    S.append(screen_quad("laptop_screen", centre + front * 0.0005, (1, 0, 0), (0, math.sin(A), math.cos(A)), 0.79, 0.49, "#4d9dff"))
+
+
+def spiral_stem(base, height, turns, rad, m, seed=0, segs=22):
+    """Декоративный «закрученный» стебель (бамбук-спираль) из коротких отрезков."""
+    import random
+    rnd = random.Random(seed)
+    ph = rnd.random() * 6.28
+    pts = []
+    for k in range(segs + 1):
+        t = k / segs
+        a = ph + t * turns * 6.283
+        r = rad * (0.4 + 0.9 * t)
+        pts.append((base[0] + math.cos(a) * r, base[1] + math.sin(a) * r, base[2] + t * height))
+    return [branch(pts[i], pts[i + 1], 0.011, 0.011, m) for i in range(segs)]
+
+
+def cone(r1, r2, depth, loc, m, verts=16):
+    bpy.ops.mesh.primitive_cone_add(vertices=verts, radius1=r1, radius2=r2, depth=depth, location=loc)
+    return finish(bpy.context.active_object, m)
+
+
+def tv_corner(P, S, wood):
+    """Телевизор на правой стене (x=4): тумба и две вазы со спиральными стеблями."""
+    blackm = mat("tv_black", "#08090d", 0.35, metal=0.2)
+    cab = mat("tv_cabinet", "#14161c", 0.45, metal=0.2)
+    vase = mat("vase", "#23262c", 0.35, metal=0.35)
+    stem = mat("curl_stem", "#2f5a2a", 0.6)
+    yc = 1.4  # центр по y (blender) = three z -1.4
+    P.append(box((0.5, 2.4, 0.5), (3.72, yc, 0.25), cab, bevel=0.01))
+    for yy in (yc - 0.6, yc + 0.6):
+        P.append(box((0.01, 1.1, 0.4), (3.465, yy, 0.25), mat("cab_door", "#1c1f27", 0.5)))
+    P.append(box((0.04, 1.62, 0.95), (3.955, yc, 1.6), blackm, bevel=0.01))
+    S.append(screen_quad("tv_screen", (3.934, yc, 1.6), (0, -1, 0), (0, 0, 1), 1.54, 0.87, "#7fc3d0"))
+    for sgn in (-1, 1):
+        yy = yc + sgn * 1.05
+        P.append(cone(0.12, 0.09, 0.5, (3.72, yy, 0.8), vase))
+        P.append(cone(0.09, 0.115, 0.08, (3.72, yy, 1.09), vase))
+        for k in range(3):
+            P += spiral_stem((3.72 + (k - 1) * 0.015, yy + (k - 1) * 0.02, 1.05), 0.75 + k * 0.1, 2.5 + k * 0.6, 0.07 + k * 0.02, stem, seed=k + 5 * (sgn + 2))
+
+
+def pc_desk(P, S):
+    """Чёрный стол с тумбой, монитором, системным блоком с RGB-кольцами, лампой и креслом."""
+    deskm = mat("pc_desk", "#0c0d11", 0.4, metal=0.2)
+    edge = mat("pc_edge", "#17191f", 0.4)
+    blackm = mat("pc_black", "#07080b", 0.35, metal=0.2)
+    chrome = mat("pc_chrome", "#9aa0ac", 0.3, metal=0.5)
+    seatm = mat("office_seat", "#15161a", 0.7)
+    cx, cy = 3.5, -1.9
+    P.append(box((0.66, 1.34, 0.045), (cx, cy, 0.74), deskm, bevel=0.01))
+    P.append(box((0.6, 0.42, 0.7), (cx, cy + 0.45, 0.35), deskm, bevel=0.01))
+    for z in (0.52, 0.34, 0.16):
+        P.append(box((0.01, 0.38, 0.015), (cx - 0.305, cy + 0.45, z), edge))
+    P.append(box((0.6, 0.03, 0.72), (cx, cy - 0.64, 0.36), deskm))
+    P.append(box((0.04, 0.66, 0.3), (cx + 0.27, cy - 0.05, 0.5), edge))
+    # монитор
+    P.append(box((0.2, 0.26, 0.015), (cx + 0.05, cy + 0.12, 0.772), blackm, bevel=0.005))
+    P.append(box((0.03, 0.04, 0.22), (cx + 0.05, cy + 0.12, 0.88), blackm))
+    P.append(box((0.026, 0.8, 0.49), (cx + 0.05, cy + 0.12, 1.12), blackm, bevel=0.006))
+    S.append(screen_quad("pc_screen", (cx + 0.05 - 0.0135, cy + 0.12, 1.12), (0, -1, 0), (0, 0, 1), 0.77, 0.45, "#e0782a"))
+    # системный блок: передняя панель (к креслу) — три RGB-кольца
+    tx, ty = cx + 0.05, cy - 0.38
+    P.append(box((0.45, 0.21, 0.5), (tx, ty, 1.0), blackm, bevel=0.008))
+    rgb = [("#ff2a6d", 1.6), ("#2dff7a", 1.6), ("#2a8cff", 1.8)]
+    for k, (col, st) in enumerate(rgb):
+        z = 0.82 + k * 0.17
+        bpy.ops.mesh.primitive_torus_add(major_radius=0.062, minor_radius=0.011, major_segments=20, minor_segments=6, location=(tx - 0.228, ty, z), rotation=(0, math.radians(90), 0))
+        P.append(finish(bpy.context.active_object, mat("rgb" + str(k), col, 0.4, col, st)))
+        P.append(cyl(0.05, 0.004, (tx - 0.226, ty, z), mat("fan_dark", "#14151b", 0.5), rot=(0, math.radians(90), 0), verts=14))
+    # клавиатура и мышь
+    P.append(box((0.17, 0.44, 0.014), (cx - 0.12, cy + 0.12, 0.77), mat("pc_kb", "#1d1f26", 0.5), bevel=0.004))
+    P.append(box((0.06, 0.04, 0.018), (cx - 0.12, cy + 0.42, 0.775), mat("pc_kb", "#1d1f26", 0.5), bevel=0.01))
+    # настольная лампа-«гусь» с жёлтым светом
+    P.append(cyl(0.06, 0.015, (cx + 0.18, cy + 0.6, 0.77), blackm, verts=12))
+    P.append(branch((cx + 0.18, cy + 0.6, 0.77), (cx + 0.12, cy + 0.55, 1.05), 0.012, 0.012, blackm))
+    P.append(branch((cx + 0.12, cy + 0.55, 1.05), (cx + 0.05, cy + 0.42, 1.14), 0.012, 0.012, blackm))
+    P.append(cone(0.075, 0.025, 0.1, (cx + 0.03, cy + 0.4, 1.12), chrome, verts=14))
+    P.append(ico(0.03, (cx + 0.03, cy + 0.4, 1.09), mat("pc_bulb", "#ffd84a", 0.4, "#ffd84a", 8.0), sub=1))
+    # кресло: хромированный каркас-«салазки», сиденье и спинка
+    ox, oy = cx - 0.95, cy
+    P.append(box((0.5, 0.5, 0.08), (ox, oy, 0.47), seatm, bevel=0.02))
+    P.append(box((0.07, 0.48, 0.52), (ox - 0.28, oy, 0.8), seatm, rot=(0, math.radians(-8), 0), bevel=0.02))
+    for sy in (-0.24, 0.24):
+        P.append(branch((ox + 0.25, oy + sy, 0.08), (ox + 0.25, oy + sy, 0.43), 0.012, 0.012, chrome))
+        P.append(branch((ox - 0.25, oy + sy, 0.08), (ox - 0.25, oy + sy, 0.43), 0.012, 0.012, chrome))
+        P.append(branch((ox - 0.25, oy + sy, 0.08), (ox + 0.3, oy + sy, 0.08), 0.012, 0.012, chrome))
+        P.append(branch((ox - 0.2, oy + sy, 0.43), (ox - 0.25, oy + sy, 0.75), 0.011, 0.011, chrome))
+        P.append(branch((ox - 0.2, oy + sy, 0.62), (ox + 0.2, oy + sy, 0.62), 0.012, 0.012, chrome))
+
+
+def wall_art(P, S, frame_m):
+    """Задняя стена (y=4): картины, часы над окном."""
+    colors = [("#e9b44c", "#2f5d8a", "#c9503a"), ("#2f8f83", "#f2e3c6", "#d17b7b")]
+    # две картины справа от окна
+    for (px, pz, w, h, pal) in [(3.25, 2.55, 0.8, 1.05, 0), (3.25, 1.25, 1.0, 0.7, 1)]:
+        P.append(box((w + 0.1, 0.04, h + 0.1), (px, 3.97, pz), frame_m, bevel=0.01))
+        P.append(box((w, 0.045, h), (px, 3.955, pz), mat("canvas", "#f4efe3", 0.9)))
+        c1, c2, c3 = colors[pal]
+        P.append(box((w * 0.8, 0.05, h * 0.38), (px, 3.95, pz + h * 0.22), mat("art_a" + str(pal), c1, 0.8)))
+        P.append(box((w * 0.5, 0.05, h * 0.32), (px - w * 0.15, 3.95, pz - h * 0.2), mat("art_b" + str(pal), c2, 0.8)))
+        P.append(cyl(h * 0.14, 0.05, (px + w * 0.2, 3.95, pz - h * 0.18), mat("art_c" + str(pal), c3, 0.8), rot=(math.radians(90), 0, 0), verts=18))
+    # маленькая рамка над шкафом
+    P.append(box((0.8, 0.04, 0.55), (-3.1, 3.97, 3.25), frame_m, bevel=0.01))
+    P.append(box((0.72, 0.045, 0.47), (-3.1, 3.955, 3.25), mat("art_sea", "#1f4b6e", 0.8)))
+    P.append(box((0.72, 0.05, 0.16), (-3.1, 3.95, 3.12), mat("art_sand", "#e6c486", 0.8)))
+    # часы над окном
+    P.append(cyl(0.24, 0.05, (0, 3.96, 3.72), frame_m, rot=(math.radians(90), 0, 0), verts=32))
+    P.append(cyl(0.21, 0.052, (0, 3.955, 3.72), mat("clock_face", "#f1ecdd", 0.7), rot=(math.radians(90), 0, 0), verts=32))
+    hands = mat("clock_hand", "#15171c", 0.5)
+    P.append(box((0.012, 0.012, 0.15), (0.0, 3.93, 3.72 + 0.075), hands))
+    P.append(box((0.12, 0.012, 0.012), (0.06, 3.925, 3.72), hands))
+    for k in range(12):
+        a = k * math.pi / 6
+        P.append(box((0.012, 0.01, 0.025), (math.sin(a) * 0.18, 3.93, 3.72 + math.cos(a) * 0.18), hands, rot=(0, -a, 0)))
+
+
 def build_room():
     clear()
     wood = mat("desk_wood", "#7a5238", 0.7)
@@ -413,10 +578,8 @@ def build_room():
         for y in (1.1, 1.9):
             P.append(box((0.06, 0.06, 0.74), (x, y, 0.37), dark_wood))
     P.append(box((1.84, 0.04, 0.3), (0, 1.9, 0.52), dark_wood))  # царга
-    # ноутбук: основание и экран, повёрнутый к камере (-Y в blender)
-    P.append(box((0.8, 0.55, 0.025), (0, 1.45, 0.8), metal, bevel=0.008))
-    P.append(box((0.74, 0.012, 0.46), (0, 1.62, 1.04), screen, rot=(math.radians(-12), 0, 0)))
-    P.append(box((0.8, 0.02, 0.5), (0, 1.635, 1.04), metal, rot=(math.radians(-12), 0, 0)))
+    S = []
+    laptop(0.0, 1.45, 0.785, P, S)
     # лампа на столе справа
     P.append(cyl(0.11, 0.03, (0.78, 1.8, 0.8), black))
     P.append(cyl(0.015, 0.5, (0.78, 1.8, 1.05), black, verts=6))
@@ -482,9 +645,9 @@ def build_room():
     P.append(cyl(0.25, 0.03, (3.3, 3.3, 0.47), mat("soil", "#2a1f18", 1.0), verts=14))
     P += leafy_plant((3.3, 3.3, 0.47), 0.47, stemg, [leaves, leaves2, leaves3], count=14, height=1.1, seed=3)
     P += leafy_plant((3.22, 3.36, 0.47), 0.47, stemg, [leaves2, leaves3], count=8, height=0.7, seed=9)
-    # рамка с картиной на правой стене (x=4)
-    P.append(box((0.04, 1.3, 0.9), (3.97, 0.4, 2.0), frame))
-    P.append(box((0.045, 1.15, 0.75), (3.96, 0.4, 2.0), art))
+    tv_corner(P, S, wood)
+    pc_desk(P, S)
+    wall_art(P, S, frame)
     # подоконник и рама окна (проём x±1.6, y 0.9..3.4, стена z=-4 → y=+4)
     P.append(box((3.7, 0.32, 0.07), (0, 3.9, 0.88), wood))
     P.append(box((3.5, 0.1, 0.1), (0, 3.97, 3.45), dark_wood))
@@ -507,7 +670,7 @@ def build_room():
     P += flower((-1.2, 3.9, 1.1), 0.5, petal2, ycen, stemg, leaves3, tilt=(0.0, 0.07))
 
     room = join(P, "room_props")
-    export(os.path.join(OUT, "room.glb"), [room])
+    export(os.path.join(OUT, "room.glb"), [room] + S)
 
 
 build_props()

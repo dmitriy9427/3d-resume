@@ -116,9 +116,136 @@ function usePlasterWallTexture() {
   }, []);
 }
 
+// ─── Обои на экранах (рисуются на canvas) ──────────────────────────────────
+function canvasTexture(w, h, draw) {
+  const c = document.createElement("canvas");
+  c.width = w;
+  c.height = h;
+  draw(c.getContext("2d"), w, h);
+  const t = new THREE.CanvasTexture(c);
+  t.colorSpace = THREE.SRGBColorSpace;
+  t.flipY = false; // UV из glTF уже перевёрнуты
+  t.anisotropy = 4;
+  return t;
+}
+
+// Ноутбук: синие обои с лучами и окно редактора кода.
+const drawLaptop = (g, w, h) => {
+  const bg = g.createLinearGradient(0, 0, w, h);
+  bg.addColorStop(0, "#041a66");
+  bg.addColorStop(0.55, "#0a46c8");
+  bg.addColorStop(1, "#1d7cff");
+  g.fillStyle = bg;
+  g.fillRect(0, 0, w, h);
+  g.globalCompositeOperation = "lighter";
+  for (let i = 0; i < 5; i++) {
+    const beam = g.createLinearGradient(w * 0.9, h * 0.35, w * 0.1, h * (0.1 + i * 0.22));
+    beam.addColorStop(0, "rgba(120,190,255,0.45)");
+    beam.addColorStop(1, "rgba(120,190,255,0)");
+    g.fillStyle = beam;
+    g.beginPath();
+    g.moveTo(w * 0.9, h * 0.35);
+    g.lineTo(0, h * (0.05 + i * 0.22));
+    g.lineTo(0, h * (0.12 + i * 0.22));
+    g.fill();
+  }
+  g.globalCompositeOperation = "source-over";
+  // окно редактора
+  g.fillStyle = "rgba(10,18,44,0.82)";
+  g.fillRect(w * 0.16, h * 0.18, w * 0.58, h * 0.6);
+  g.fillStyle = "rgba(255,255,255,0.1)";
+  g.fillRect(w * 0.16, h * 0.18, w * 0.58, h * 0.07);
+  ["#ff5f56", "#ffbd2e", "#27c93f"].forEach((col, i) => {
+    g.fillStyle = col;
+    g.beginPath();
+    g.arc(w * 0.19 + i * 22, h * 0.215, 7, 0, 7);
+    g.fill();
+  });
+  const cols = ["#7fd1ff", "#ffb86b", "#b79cff", "#8be39a", "#ff7ab6"];
+  for (let r = 0; r < 9; r++) {
+    let x = w * 0.19 + (r % 3) * 26;
+    const y = h * 0.31 + r * h * 0.048;
+    for (let k = 0; k < 3 + (r % 3); k++) {
+      const len = 40 + ((r * 37 + k * 53) % 90);
+      g.fillStyle = cols[(r + k) % cols.length];
+      g.fillRect(x, y, len, 8);
+      x += len + 12;
+    }
+  }
+};
+
+// Телевизор: горы над озером и отражение.
+const drawTV = (g, w, h) => {
+  const sky = g.createLinearGradient(0, 0, 0, h * 0.55);
+  sky.addColorStop(0, "#6ab8c8");
+  sky.addColorStop(1, "#f1d2b4");
+  g.fillStyle = sky;
+  g.fillRect(0, 0, w, h * 0.55);
+  g.fillStyle = "#c88b75";
+  g.beginPath();
+  g.moveTo(0, h * 0.55);
+  g.lineTo(w * 0.12, h * 0.42);
+  g.lineTo(w * 0.3, h * 0.3);
+  g.lineTo(w * 0.42, h * 0.46);
+  g.lineTo(w * 0.55, h * 0.55);
+  g.fill();
+  g.fillStyle = "#8a5d6a";
+  g.beginPath();
+  g.moveTo(w * 0.3, h * 0.55);
+  g.lineTo(w * 0.62, h * 0.38);
+  g.lineTo(w * 0.78, h * 0.46);
+  g.lineTo(w, h * 0.55);
+  g.fill();
+  const lake = g.createLinearGradient(0, h * 0.55, 0, h);
+  lake.addColorStop(0, "#caa08e");
+  lake.addColorStop(1, "#8fb7c4");
+  g.fillStyle = lake;
+  g.fillRect(0, h * 0.55, w, h * 0.45);
+  g.save();
+  g.globalAlpha = 0.55;
+  g.translate(0, h * 1.1);
+  g.scale(1, -1);
+  g.drawImage(g.canvas, 0, 0, w, h * 0.55, 0, h * 0.55, w, h * 0.55);
+  g.restore();
+};
+
+// Монитор ПК: цветной «акварельный» градиент.
+const drawPC = (g, w, h) => {
+  const bg = g.createLinearGradient(0, 0, w, h);
+  bg.addColorStop(0, "#1c8f4a");
+  bg.addColorStop(0.5, "#e69a1d");
+  bg.addColorStop(1, "#d6322a");
+  g.fillStyle = bg;
+  g.fillRect(0, 0, w, h);
+  g.globalAlpha = 0.25;
+  for (let i = 0; i < 8; i++) {
+    g.fillStyle = i % 2 ? "#fff" : "#000";
+    g.beginPath();
+    g.ellipse(w * (0.1 + i * 0.12), h * (0.3 + (i % 3) * 0.2), w * 0.2, h * 0.08, 0.6, 0, 7);
+    g.fill();
+  }
+  g.globalAlpha = 1;
+};
+
+const SCREENS = {
+  laptop_screen: [1024, 640, drawLaptop],
+  tv_screen: [1280, 720, drawTV],
+  pc_screen: [1024, 640, drawPC],
+};
+
 // Мебель комнаты — из blender/make_assets.py (public/models/room.glb).
 function RoomProps() {
   const { scene } = useGLTF("/models/room.glb");
+  useMemo(() => {
+    scene.traverse((o) => {
+      const spec = o.isMesh && (SCREENS[o.name] || SCREENS[o.parent?.name]);
+      if (!spec) return;
+      o.material = new THREE.MeshBasicMaterial({
+        map: canvasTexture(...spec),
+        toneMapped: false,
+      });
+    });
+  }, [scene]);
   return <primitive object={scene} />;
 }
 useGLTF.preload("/models/room.glb");
@@ -189,6 +316,10 @@ export default function IntroScene() {
         distance={14}
         decay={1.4}
       />
+      {/* свечение экранов и RGB-блока */}
+      <pointLight position={[0, 1.0, -1.1]} color="#4fe8ff" intensity={1.6} distance={2.2} decay={1.4} />
+      <pointLight position={[3.3, 1.6, -1.4]} color="#9fd8ff" intensity={4} distance={5} decay={1.5} />
+      <pointLight position={[3.0, 1.0, 1.6]} color="#c060ff" intensity={2.5} distance={3.2} decay={1.5} />
       {/* люстра */}
       <pointLight position={[0, 3.3, -1.5]} color="#ffd9a0" intensity={14} distance={10} decay={1.5} />
       {/* тёплая лампа на столе */}
