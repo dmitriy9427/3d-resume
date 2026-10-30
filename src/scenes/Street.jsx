@@ -15,6 +15,7 @@ import {
 } from "../utils/cameraPath";
 import { MOON_DIR } from "./Sky";
 import Props from "./Props";
+import { asset } from "../utils/url";
 
 export const FOG_COLOR = "#141a3a";
 export const FOG_DENSITY = 0.0105;
@@ -724,7 +725,7 @@ function signTexture(stop) {
       drawSign(g, stop, img);
       t.needsUpdate = true;
     };
-    img.src = stop.image;
+    img.src = asset(stop.image);
   }
   return t;
 }

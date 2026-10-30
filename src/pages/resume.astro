@@ -1,11 +1,12 @@
 ---
 import Layout from "../layouts/Layout.astro";
 import { SKILLS, PROJECTS, CONTACTS } from "../data/resume";
+import { asset } from "../utils/url";
 ---
 
 <Layout scrollable>
   <main>
-    <a href="/" class="back-link">← 3D-версия</a>
+    <a href={asset("/")} class="back-link">← 3D-версия</a>
 
     <h1>Резюме</h1>
 

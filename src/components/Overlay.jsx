@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { STOPS } from "../data/resume";
 import { scrollState, useSceneStore } from "../store/useSceneStore";
 import { stopScroll } from "../utils/cameraPath";
+import { asset } from "../utils/url";
 
 export default function Overlay() {
   const active = useSceneStore((s) => s.activeStop);
@@ -29,7 +30,7 @@ export default function Overlay() {
   return (
     <div className="hud">
       <div className="hud__bar" ref={bar} />
-      <a className="hud__text" href="/resume">
+      <a className="hud__text" href={asset("/resume/")}>
         Текстовая версия
       </a>
 

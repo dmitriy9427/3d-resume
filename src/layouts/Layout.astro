@@ -1,16 +1,19 @@
 ---
+import { asset } from "../utils/url";
 const { scrollable = false } = Astro.props;
 ---
 
 <!doctype html>
-<html lang="en">
+<html lang="ru">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width" />
-    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
-    <link rel="icon" href="/favicon.ico" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="description" content="Интерактивное 3D-резюме Дмитрия Рябова: прогулка по ночному городу с проектами и опытом." />
+    <meta name="theme-color" content="#05070f" />
+    <link rel="icon" type="image/svg+xml" href={asset("/favicon.svg")} />
+    <link rel="icon" href={asset("/favicon.ico")} />
     <meta name="generator" content={Astro.generator} />
-    <title>#3d-resume</title>
+    <title>Дмитрий Рябов — 3D-резюме</title>
   </head>
   <body class={scrollable ? "scrollable" : ""}>
     <slot />

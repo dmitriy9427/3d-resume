@@ -1,6 +1,7 @@
 import { Plane, useGLTF } from "@react-three/drei";
 import { useMemo } from "react";
 import { ROOM_FLOOR } from "../utils/cameraPath";
+import { asset } from "../utils/url";
 import * as THREE from "three";
 
 const ROOM_W = 8;
@@ -235,7 +236,7 @@ const SCREENS = {
 
 // Мебель комнаты — из blender/make_assets.py (public/models/room.glb).
 function RoomProps() {
-  const { scene } = useGLTF("/models/room.glb");
+  const { scene } = useGLTF(asset("/models/room.glb"));
   useMemo(() => {
     scene.traverse((o) => {
       const spec = o.isMesh && (SCREENS[o.name] || SCREENS[o.parent?.name]);
@@ -248,7 +249,7 @@ function RoomProps() {
   }, [scene]);
   return <primitive object={scene} />;
 }
-useGLTF.preload("/models/room.glb");
+useGLTF.preload(asset("/models/room.glb"));
 
 export default function IntroScene() {
   const floorMap = usePlankFloorTexture();

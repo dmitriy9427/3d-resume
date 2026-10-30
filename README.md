@@ -1,46 +1,42 @@
-# Astro Starter Kit: Basics
+# 3D-резюме: прогулка по ночному городу
 
-```sh
-npm create astro@latest -- --template basics
+Интерактивное резюме. Вы сидите в комнате на высоком этаже, прокручиваете страницу — камера вылетает в окно, спускается на улицу и идёт по ночному городу к морю. На зданиях вывески с проектами и опытом, внизу карточка с описанием.
+
+**Демо:** https://dmitriy9427.github.io/3d-resume/ · **Текстовая версия:** `/resume/` · **Основное резюме:** https://dmitriy9427.github.io/resume/
+
+## Запуск
+
+```bash
+npm install
+npm run dev        # http://localhost:4321
+npm run build      # сборка в dist/
 ```
 
-> 🧑‍🚀 **Seasoned astronaut?** Delete this file. Have fun!
+Модели для сцены (деревья, машины, мебель комнаты) генерирует Blender из кода:
 
-## 🚀 Project Structure
-
-Inside of your Astro project, you'll see the following folders and files:
-
-```text
-/
-├── public/
-│   └── favicon.svg
-├── src
-│   ├── assets
-│   │   └── astro.svg
-│   ├── components
-│   │   └── Welcome.astro
-│   ├── layouts
-│   │   └── Layout.astro
-│   └── pages
-│       └── index.astro
-└── package.json
+```bash
+blender -b -P blender/make_assets.py   # → public/models/props.glb и room.glb
 ```
 
-To learn more about the folder structure of an Astro project, refer to [our guide on project structure](https://docs.astro.build/en/basics/project-structure/).
+Готовые `.glb` лежат в репозитории, Blender нужен только если вы меняете модели.
 
-## 🧞 Commands
+## Стек
 
-All commands are run from the root of the project, from a terminal:
+Astro · React · three.js через `@react-three/fiber` и `@react-three/drei` · zustand · Blender 5 (Python-скрипт) · GitHub Pages.
 
-| Command                   | Action                                           |
-| :------------------------ | :----------------------------------------------- |
-| `npm install`             | Installs dependencies                            |
-| `npm run dev`             | Starts local dev server at `localhost:4321`      |
-| `npm run build`           | Build your production site to `./dist/`          |
-| `npm run preview`         | Preview your build locally, before deploying     |
-| `npm run astro ...`       | Run CLI commands like `astro add`, `astro check` |
-| `npm run astro -- --help` | Get help using the Astro CLI                     |
+## Документация
 
-## 👀 Want to learn more?
+Подробный учебник — как всё устроено, что где менять и как добавить новое: **[docs/TUTORIAL.md](docs/TUTORIAL.md)**.
 
-Feel free to check [our documentation](https://docs.astro.build) or jump into our [Discord server](https://astro.build/chat).
+## Где что менять (кратко)
+
+| Хочу… | Файл |
+| --- | --- |
+| поменять тексты, добавить остановку | `src/data/resume.js` |
+| длина улицы, расстояния, путь камеры | `src/utils/cameraPath.js` |
+| поведение камеры, поворот к вывескам, свободный обзор | `src/scenes/CameraRig.jsx` |
+| луна, небо, звёзды | `src/scenes/Sky.jsx` |
+| здания, дорога, море, фонари, вывески | `src/scenes/Street.jsx` |
+| деревья, скамейки, машины | `src/scenes/Props.jsx` + `blender/make_assets.py` |
+| комната, экраны, свет в комнате | `src/scenes/IntroScene.jsx` + `blender/make_assets.py` |
+| карточки, подсказки, мобильная вёрстка | `src/components/Overlay.jsx` + `src/styles/journey.css` |

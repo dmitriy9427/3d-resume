@@ -3,6 +3,7 @@ import { useFrame } from "@react-three/fiber";
 import { useGLTF } from "@react-three/drei";
 import * as THREE from "three";
 import { STOPS } from "../data/resume";
+import { asset } from "../utils/url";
 import { CROSS_Z, EDGE, ROAD_HALF, STREET_END, stopZ } from "../utils/cameraPath";
 
 // Модели из blender/make_assets.py (деревья, скамейки, урны, машины).
@@ -177,7 +178,7 @@ function InstancedProp({ parts, items, animated }) {
 }
 
 export default function Props() {
-  const { scene } = useGLTF("/models/props.glb");
+  const { scene } = useGLTF(asset("/models/props.glb"));
   const layout = useMemo(buildLayout, []);
   // мигалки полиции: синий и красный по очереди
   const flashers = useMemo(() => {
@@ -205,4 +206,4 @@ export default function Props() {
   ));
 }
 
-useGLTF.preload("/models/props.glb");
+useGLTF.preload(asset("/models/props.glb"));
