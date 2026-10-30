@@ -242,6 +242,12 @@ CAR_STYLES = {
         lower=[(2.25, 0.44), (2.25, 0.94), (2.0, 1.06), (0.95, 1.12), (-2.1, 1.12), (-2.28, 1.0), (-2.28, 0.44)],
         glass=[(0.95, 1.12), (0.5, 1.74), (-1.95, 1.74), (-2.15, 1.12)],
         w=1.95, r=0.39, clear=0.1, wing=False),
+    # van — как зелёный фургон 70-х: короткий капот, высокий грузовой кузов
+    "van": dict(
+        lower=[(2.3, 0.42), (2.3, 0.95), (2.05, 1.06), (1.65, 1.12), (-2.4, 1.12), (-2.4, 0.42)],
+        glass=[(1.65, 1.12), (1.15, 1.74), (0.85, 1.74), (0.85, 1.12)],
+        cargo=[(0.85, 1.1), (0.85, 1.98), (-2.35, 1.98), (-2.4, 1.1)],
+        w=1.95, r=0.4, clear=0.12, wing=False),
 }
 
 
@@ -267,7 +273,7 @@ def wheel(x, y, r, tire, rim, disc):
     return out
 
 
-def car(name, color, style="fastback"):
+def car(name, color, style="fastback", extras=None):
     st = CAR_STYLES[style]
     w = st["w"]
     body = mat("car_" + color, color, 0.4, metal=0.1)
@@ -293,6 +299,8 @@ def car(name, color, style="fastback"):
         # крыша: тонкая крышка того же цвета
         extrude_poly([(gl[1][0] + 0.02, top + 0.03), (gl[2][0] - 0.02, top + 0.03), (gl[2][0] - 0.06, top - 0.04), (gl[1][0] + 0.06, top - 0.04)], w - 0.3, body, "roof", bevel=0.03),
     ]
+    if st.get("cargo"):
+        parts.append(extrude_poly(st["cargo"], w, body, "cargo", bevel=0.07))
     # пороги и низ
     parts.append(box((w - 0.02, front - rear - 0.5, 0.1), (0, (front + rear) / 2, 0.3 + c), trim, bevel=0.02))
     # колёса, диски со спицами, арки
@@ -329,14 +337,63 @@ def car(name, color, style="fastback"):
         parts.append(box((1.84, 0.5, 0.05), (0, rear + 0.05, 1.36), body, bevel=0.01))
         parts.append(box((0.04, 0.5, 0.18), (-0.92, rear + 0.05, 1.3), body))
         parts.append(box((0.04, 0.5, 0.18), (0.92, rear + 0.05, 1.3), body))
+    if extras:
+        parts += extras(st, w, front, rear, c)
     o = join(parts, name)
     smooth(o)
     return o
 
 
+def police_extras(st, w, front, rear, c):
+    """Полицейский внедорожник: белые двери, мигалки на крыше, кенгурятник."""
+    white = mat("police_white", "#e9ebef", 0.4)
+    blue = mat("police_blue", "#2a4cff", 0.4, "#2a4cff", 4.0)
+    red = mat("police_red", "#ff2a2a", 0.4, "#ff2a2a", 4.0)
+    barm = mat("police_bar", "#0b0c0f", 0.5)
+    chrome = mat("police_chrome", "#8f95a3", 0.4, metal=0.3)
+    out = []
+    # белые двери и боковые стойки
+    out.append(box((w + 0.012, 1.55, 0.66), (0, 0.15, 0.82 + c * 0.2), white, bevel=0.02))
+    out.append(box((w - 0.28, 1.62, 0.04), (0, 0.15, 1.2), white))
+    # светодиодная балка на крыше
+    top = max(p[1] for p in st["glass"])
+    out.append(box((1.32, 0.36, 0.1), (0, 0.1, top + 0.1), barm, bevel=0.02))
+    out.append(box((0.62, 0.34, 0.07), (-0.34, 0.1, top + 0.17), blue, bevel=0.01))
+    out.append(box((0.62, 0.34, 0.07), (0.34, 0.1, top + 0.17), red, bevel=0.01))
+    # мигалки в решётке и сзади
+    out.append(box((0.5, 0.05, 0.06), (0, front + 0.02, 0.98 + c), blue))
+    out.append(box((0.5, 0.05, 0.06), (0, rear - 0.02, 1.02 + c), red))
+    # кенгурятник
+    for x in (-0.7, 0.7):
+        out.append(branch((x, front + 0.12, 0.45 + c), (x, front + 0.12, 1.0 + c), 0.04, 0.04, barm))
+    out.append(branch((-0.7, front + 0.12, 0.98 + c), (0.7, front + 0.12, 0.98 + c), 0.04, 0.04, barm))
+    out.append(branch((-0.7, front + 0.12, 0.62 + c), (0.7, front + 0.12, 0.62 + c), 0.04, 0.04, barm))
+    out.append(box((0.04, 0.1, 0.1), (0, front + 0.06, 0.8 + c), chrome))
+    return out
+
+
+def van_extras(st, w, front, rear, c):
+    """Фургон: круглые фары, хромированный бампер и решётка, оранжевые габариты."""
+    chrome = mat("van_chrome", "#aeb4c2", 0.3, metal=0.35)
+    lamp = mat("van_lamp", "#fff3d2", 0.3, "#fff3d2", 4.0)
+    amber = mat("van_amber", "#ffa33a", 0.4, "#ff9a2a", 3.0)
+    out = []
+    for x in (-0.68, 0.68):
+        out.append(cyl(0.13, 0.06, (x, front + 0.01, 0.86 + c), lamp, rot=(math.radians(90), 0, 0), verts=16))
+        out.append(cyl(0.16, 0.04, (x, front - 0.01, 0.86 + c), chrome, rot=(math.radians(90), 0, 0), verts=16))
+    out.append(box((0.9, 0.05, 0.22), (0, front + 0.02, 0.86 + c), chrome))
+    for k in range(5):
+        out.append(box((0.88, 0.02, 0.012), (0, front + 0.05, 0.78 + c + k * 0.04), mat("van_dark", "#17191d", 0.5)))
+    out.append(box((w + 0.06, 0.16, 0.2), (0, front + 0.04, 0.48 + c), chrome, bevel=0.02))
+    out.append(box((w + 0.06, 0.16, 0.2), (0, rear - 0.04, 0.48 + c), chrome, bevel=0.02))
+    for x in (-0.95, 0.95):
+        out.append(box((0.06, 0.12, 0.07), (x, front - 0.08, 1.0 + c), amber))
+    return out
+
+
 def build_props():
     clear()
-    items = [tree(), tree_b(), bench(), bin_(), car("car_a", "#5b6372", "fastback"), car("car_b", "#b3202a", "super"), car("car_c", "#26344f", "suv")]
+    items = [tree(), tree_b(), bench(), bin_(), car("car_a", "#5b6372", "fastback"), car("car_b", "#b3202a", "super"), car("car_c", "#26344f", "suv"), car("car_d", "#14161b", "suv", police_extras), car("car_e", "#3f5e46", "van", van_extras)]
     for i, o in enumerate(items):
         o.location = (i * 6, 0, 0)
     export(os.path.join(OUT, "props.glb"), items)

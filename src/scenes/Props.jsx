@@ -29,7 +29,7 @@ function partsOf(scene, name) {
   return parts;
 }
 
-const CAR_TYPES = ["car_a", "car_b", "car_c"];
+const CAR_TYPES = ["car_a", "car_b", "car_c", "car_d", "car_e"];
 const LANE = 2.4;
 const dummy = new THREE.Object3D();
 
@@ -40,7 +40,7 @@ const CROSS_X = 80;
 
 function buildLayout() {
   const rand = rng(11);
-  const items = { tree: [], tree_b: [], bench: [], bin: [], car_a: [], car_b: [], car_c: [] };
+  const items = { tree: [], tree_b: [], bench: [], bin: [], car_a: [], car_b: [], car_c: [], car_d: [], car_e: [] };
   // зоны вывесок: здесь деревья и скамейки не ставим — они закрывали бы вывеску
   const heroZones = STOPS.map((s, i) =>
     s.side ? { side: s.side === "left" ? -1 : 1, z: stopZ(i) } : null,
@@ -71,14 +71,14 @@ function buildLayout() {
   for (const side of [-1, 1]) {
     for (let z = CROSS_Z - 10; z > STREET_END; z -= 8 + rand() * 6) {
       if (rand() > 0.45) continue;
-      const type = CAR_TYPES[Math.floor(rand() * 3)];
+      const type = CAR_TYPES[Math.floor(rand() * CAR_TYPES.length)];
       items[type].push({ x: side * (ROAD_HALF - 1.3), z, rot: side < 0 ? Math.PI : 0, s: 1 });
     }
   }
   // едущие машины. «in» едут к дому и сворачивают на поперечную улицу, «out»
   // приезжают с неё и сворачивают на улицу. В дом никто не заезжает.
-  for (let i = 0; i < 10; i++) {
-    const type = CAR_TYPES[i % 3];
+  for (let i = 0; i < 12; i++) {
+    const type = CAR_TYPES[i % CAR_TYPES.length];
     const dirIn = i % 2 === 0;
     const speed = 4 + rand() * 4;
     if (dirIn) {
@@ -179,6 +179,21 @@ function InstancedProp({ parts, items, animated }) {
 export default function Props() {
   const { scene } = useGLTF("/models/props.glb");
   const layout = useMemo(buildLayout, []);
+  // мигалки полиции: синий и красный по очереди
+  const flashers = useMemo(() => {
+    const found = {};
+    scene.traverse((o) => {
+      if (o.isMesh && (o.material.name === "police_blue" || o.material.name === "police_red")) {
+        found[o.material.name] = o.material;
+      }
+    });
+    return found;
+  }, [scene]);
+  useFrame(({ clock }) => {
+    const on = Math.floor(clock.elapsedTime * 5) % 2 === 0;
+    if (flashers.police_blue) flashers.police_blue.emissiveIntensity = on ? 6 : 0.2;
+    if (flashers.police_red) flashers.police_red.emissiveIntensity = on ? 0.2 : 6;
+  });
   const names = Object.keys(layout);
   return names.map((name) => (
     <InstancedProp

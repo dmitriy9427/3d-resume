@@ -121,9 +121,18 @@ const buildingMaterial = new THREE.ShaderMaterial({
           float mullion = step(gf.x, 0.07) + step(0.93, gf.x);
           float spandrel = step(gf.y, 0.2);
           float panel = step(0.82, hash(vec2(gid.x, floor(uv.y / 9.0)) + vSeed * 11.0)) * (1.0 - spandrel);
-          float h01 = clamp(vWorld.y / 70.0, 0.0, 1.0);
-          vec3 sky = mix(vec3(0.045, 0.07, 0.16), vec3(0.2, 0.24, 0.42), h01);
-          vec3 glassCol = sky * (0.7 + 0.8 * moonLight) + vec3(0.03, 0.04, 0.07) * hash(gid + 2.0);
+          // стекло отражает небо: от тёплого светящегося горизонта к тёмному зениту,
+          // плюс блик луны и отражение огней города внизу
+          vec3 V = normalize(vWorld - cameraPosition);
+          vec3 R = reflect(V, n);
+          float fres = pow(1.0 - max(dot(-V, n), 0.0), 2.0);
+          float ry = clamp(R.y, 0.0, 1.0);
+          vec3 skyRefl = mix(vec3(0.12, 0.12, 0.26), vec3(0.012, 0.025, 0.09), smoothstep(0.0, 0.6, ry));
+          float tileTint = 0.75 + 0.5 * hash(gid + 5.0);
+          vec3 glassCol = skyRefl * (0.5 + 0.8 * fres) * tileTint;
+          glassCol += vec3(1.0, 0.97, 0.88) * pow(max(dot(R, uMoonDir), 0.0), 90.0) * 1.6;
+          // отражение уличных огней в нижних этажах
+          glassCol += vec3(1.0, 0.6, 0.28) * (1.0 - smoothstep(4.0, 26.0, vWorld.y)) * 0.18 * hash(gid + 8.0);
           float lit = step(0.7, hash(gid + vSeed * 41.0));
           vec3 warm = vec3(1.0, 0.78, 0.46);
           glassCol += warm * lit * 0.75 * (1.0 - spandrel);
