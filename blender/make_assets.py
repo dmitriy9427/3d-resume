@@ -469,6 +469,17 @@ def tv_corner(P, S, wood):
         P.append(box((0.01, 1.1, 0.4), (3.465, yy, 0.25), mat("cab_door", "#1c1f27", 0.5)))
     P.append(box((0.04, 1.62, 0.95), (3.955, yc, 1.6), blackm, bevel=0.01))
     S.append(screen_quad("tv_screen", (3.934, yc, 1.6), (0, -1, 0), (0, 0, 1), 1.54, 0.87, "#7fc3d0"))
+    # часы над телевизором (ось — по x, циферблат смотрит в комнату)
+    gold_c = mat("clock_frame", "#caa86a", 0.4, metal=0.3)
+    zc = 2.55
+    P.append(cyl(0.24, 0.05, (3.95, yc, zc), gold_c, rot=(0, math.radians(90), 0), verts=32))
+    P.append(cyl(0.21, 0.052, (3.947, yc, zc), mat("clock_face", "#f1ecdd", 0.7), rot=(0, math.radians(90), 0), verts=32))
+    hands = mat("clock_hand", "#15171c", 0.5)
+    P.append(box((0.012, 0.012, 0.15), (3.918, yc, zc + 0.075), hands))
+    P.append(box((0.012, 0.11, 0.012), (3.912, yc - 0.055, zc), hands))
+    for k in range(12):
+        ang = k * math.pi / 6
+        P.append(box((0.01, 0.012, 0.028), (3.93, yc - math.sin(ang) * 0.18, zc + math.cos(ang) * 0.18), hands, rot=(ang, 0, 0)))
     for sgn in (-1, 1):
         yy = yc + sgn * 1.05
         P.append(cone(0.12, 0.09, 0.5, (3.72, yy, 0.8), vase))
@@ -541,15 +552,83 @@ def wall_art(P, S, frame_m):
     P.append(box((0.8, 0.04, 0.55), (-3.1, 3.97, 3.25), frame_m, bevel=0.01))
     P.append(box((0.72, 0.045, 0.47), (-3.1, 3.955, 3.25), mat("art_sea", "#1f4b6e", 0.8)))
     P.append(box((0.72, 0.05, 0.16), (-3.1, 3.95, 3.12), mat("art_sand", "#e6c486", 0.8)))
-    # часы над окном
-    P.append(cyl(0.24, 0.05, (0, 3.96, 3.72), frame_m, rot=(math.radians(90), 0, 0), verts=32))
-    P.append(cyl(0.21, 0.052, (0, 3.955, 3.72), mat("clock_face", "#f1ecdd", 0.7), rot=(math.radians(90), 0, 0), verts=32))
-    hands = mat("clock_hand", "#15171c", 0.5)
-    P.append(box((0.012, 0.012, 0.15), (0.0, 3.93, 3.72 + 0.075), hands))
-    P.append(box((0.12, 0.012, 0.012), (0.06, 3.925, 3.72), hands))
-    for k in range(12):
-        a = k * math.pi / 6
-        P.append(box((0.012, 0.01, 0.025), (math.sin(a) * 0.18, 3.93, 3.72 + math.cos(a) * 0.18), hands, rot=(0, -a, 0)))
+
+
+def curtain_panel(cx, ymid, w0, h, ztop, seed):
+    """Драпированная штора: складки, сборка у подхвата, зубчатый подол, рисунок вершинными цветами."""
+    import bmesh
+    nx, nz = 22, 14
+    me = bpy.data.meshes.new("curtain")
+    o = bpy.data.objects.new("curtain", me)
+    bpy.context.collection.objects.link(o)
+    bm = bmesh.new()
+    meta = []
+    rows = []
+    for j in range(nz + 1):
+        t = j / nz
+        if t < 0.5:
+            wf = 1.0
+        elif t < 0.62:
+            wf = 1.0 - (t - 0.5) / 0.12 * 0.45
+        else:
+            wf = 0.55 + (t - 0.62) / 0.38 * 0.4
+        w = w0 * wf
+        row = []
+        for i in range(nx + 1):
+            u = i / nx - 0.5
+            ph = u * 2 * math.pi * 5 + seed + t * 0.8
+            amp = 0.05 * (0.6 + 0.9 * (1 - wf) + 0.4 * t)
+            x = cx + u * w + 0.04 * math.sin(t * 4 + seed)
+            y = ymid + math.sin(ph) * amp
+            z = ztop - t * h
+            if j == nz:
+                z += 0.035 * (1 if i % 2 else -1)
+            row.append(bm.verts.new((x, y, z)))
+            meta.append((u, t, ph, x, z))
+        rows.append(row)
+    for j in range(nz):
+        for i in range(nx):
+            bm.faces.new((rows[j][i], rows[j][i + 1], rows[j + 1][i + 1], rows[j + 1][i]))
+    bm.to_mesh(me)
+    bm.free()
+    for poly in me.polygons:
+        poly.use_smooth = True
+    attr = me.color_attributes.new("Col", "FLOAT_COLOR", "CORNER")
+    base = hex_rgba("#b0481f")
+    for li, loop in enumerate(me.loops):
+        u, t, ph, x, z = meta[loop.vertex_index]
+        shade = 0.72 + 0.34 * (0.5 + 0.5 * math.sin(ph))
+        pat = 0.9 + 0.1 * math.sin(x * 22) * math.sin(z * 22)
+        k = shade * pat
+        attr.data[li].color = (base[0] * k, base[1] * k * 0.95, base[2] * k, 1.0)
+    m = bpy.data.materials.new("curtain_mat")
+    m.use_nodes = True
+    m.use_backface_culling = False
+    nt = m.node_tree
+    bsdf = nt.nodes["Principled BSDF"]
+    bsdf.inputs["Roughness"].default_value = 0.85
+    cn = nt.nodes.new("ShaderNodeVertexColor")
+    cn.layer_name = "Col"
+    nt.links.new(cn.outputs["Color"], bsdf.inputs["Base Color"])
+    me.materials.append(m)
+    return o
+
+
+def curtains(P):
+    bronze = mat("rod_bronze", "#8a5a2b", 0.4, metal=0.35)
+    gold = mat("tieback", "#e8c84a", 0.5)
+    ry, rz = 3.86, 3.56
+    P.append(cyl(0.022, 5.9, (0, ry, rz), bronze, rot=(0, math.radians(90), 0), verts=10))
+    for sx in (-1, 1):
+        P.append(ico(0.065, (sx * 2.98, ry, rz), bronze, sub=2))
+        P.append(cyl(0.035, 0.05, (sx * 2.88, ry, rz), bronze, rot=(0, math.radians(90), 0), verts=10))
+        cx = sx * 2.2
+        P.append(curtain_panel(cx, 3.72, 1.0, 3.42, rz - 0.04, 0.7 + sx))
+        # подхват-лента
+        P.append(box((0.52, 0.16, 0.05), (cx, 3.72, rz - 0.04 - 3.42 * 0.62), gold, rot=(0, sx * 0.08, 0), bevel=0.01))
+        # кольца на карнизе
+        for k in range(6):
+            P.append(cyl(0.035, 0.012, (cx - 0.4 + k * 0.16, ry, rz - 0.03), bronze, rot=(0, 0, 0), verts=10))
 
 
 def build_room():
@@ -653,11 +732,7 @@ def build_room():
     P.append(box((3.5, 0.1, 0.1), (0, 3.97, 3.45), dark_wood))
     P.append(box((0.1, 0.1, 2.6), (-1.65, 3.97, 2.15), dark_wood))
     P.append(box((0.1, 0.1, 2.6), (1.65, 3.97, 2.15), dark_wood))
-    # шторы и карниз
-    P.append(cyl(0.02, 3.9, (0, 3.85, 3.55), black, rot=(0, math.radians(90), 0), verts=6))
-    for sx in (-1, 1):
-        for k in range(4):
-            P.append(box((0.22, 0.05, 2.7), (sx * (1.95 + k * 0.2 - 0.3), 3.82 - (k % 2) * 0.04, 2.15), curtain))
+    curtains(P)
     # горшок с цветами на подоконнике
     petal = mat("petal", "#f4b6cf", 0.6)
     petal2 = mat("petal2", "#fff3d6", 0.6)

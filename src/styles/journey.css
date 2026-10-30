@@ -150,12 +150,62 @@
   transform: scale(1.5);
 }
 @media (max-width: 767px) {
+  /* компактная карточка внизу: сцена остаётся на виду; тап — раскрыть */
   .card,
   .card--left {
-    left: 4vw;
-    right: 4vw;
-    bottom: 3vh;
+    left: 3vw;
+    right: 3vw;
+    bottom: 2vh;
     width: auto;
+    padding: 0.65em 0.85em;
+    border-radius: 14px;
+    background: rgba(8, 13, 32, 0.74);
+    cursor: pointer;
+  }
+  .card__kicker {
+    margin: 0 0 0.15em;
+    font-size: 10px;
+  }
+  .card__title {
+    margin: 0 0 0.25em;
+    font-size: 17px;
+  }
+  .card__text {
+    font-size: 12.5px;
+    line-height: 1.4;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+  .card.is-open .card__text {
+    -webkit-line-clamp: unset;
+    line-clamp: unset;
+    display: block;
+  }
+  .card__stack {
+    display: none;
+  }
+  .card.is-open .card__stack {
+    display: block;
+  }
+  .card__links {
+    margin-top: 0.5em;
+    gap: 0.4em;
+  }
+  .card__links a {
+    font-size: 12px;
+    padding: 0.3em 0.7em;
+  }
+  .hud__text {
+    top: 10px;
+    right: 10px;
+    font-size: 11px;
+    padding: 0.35em 0.7em;
+  }
+  .hint {
+    bottom: 22vh;
   }
   .dots {
     display: none;

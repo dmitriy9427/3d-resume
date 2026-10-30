@@ -1,10 +1,13 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { STOPS } from "../data/resume";
 import { scrollState, useSceneStore } from "../store/useSceneStore";
 import { stopScroll } from "../utils/cameraPath";
 
 export default function Overlay() {
   const active = useSceneStore((s) => s.activeStop);
+  const [open, setOpen] = useState(false);
+  // при смене остановки карточка снова сворачивается
+  useEffect(() => setOpen(false), [active]);
   const bar = useRef(null);
 
   useEffect(() => {
@@ -35,7 +38,11 @@ export default function Overlay() {
           key={s.id}
           className={`card ${s.side === "left" ? "card--left" : ""} ${
             i === active ? "is-active" : ""
-          }`}
+          } ${i === active && open ? "is-open" : ""}`}
+          onClick={(e) => {
+            if (e.target.closest("a")) return;
+            setOpen((v) => !v);
+          }}
           aria-hidden={i !== active}
           style={{ "--accent": s.accent || "#6aa9ff" }}
         >

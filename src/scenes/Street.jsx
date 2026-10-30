@@ -37,19 +37,24 @@ const buildingMaterial = new THREE.ShaderMaterial({
     uFog: { value: new THREE.Color(FOG_COLOR) },
     uFogDensity: { value: FOG_DENSITY },
     uMoonDir: { value: MOON_DIR.clone() },
-    uWall: { value: new THREE.Color("#2b3358") },
   },
   vertexShader: /* glsl */ `
     varying vec3 vWorld;
     varying vec3 vNormal;
     varying float vSeed;
     varying float vDepth;
+    varying vec3 vCenter;
+    varying vec3 vScale;
     void main() {
       mat4 m = modelMatrix;
       vSeed = 0.5;
+      vCenter = vec3(0.0);
+      vScale = vec3(10.0);
       #ifdef USE_INSTANCING
         m = modelMatrix * instanceMatrix;
         vSeed = fract(sin(dot(instanceMatrix[3].xz, vec2(12.9898, 78.233))) * 43758.5453);
+        vCenter = instanceMatrix[3].xyz;
+        vScale = vec3(length(instanceMatrix[0].xyz), length(instanceMatrix[1].xyz), length(instanceMatrix[2].xyz));
       #endif
       vec4 wp = m * vec4(position, 1.0);
       vWorld = wp.xyz;
@@ -64,40 +69,99 @@ const buildingMaterial = new THREE.ShaderMaterial({
     varying vec3 vNormal;
     varying float vSeed;
     varying float vDepth;
+    varying vec3 vCenter;
+    varying vec3 vScale;
     uniform vec3 uFog;
     uniform float uFogDensity;
     uniform vec3 uMoonDir;
-    uniform vec3 uWall;
 
     float hash(vec2 p) {
       return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453);
     }
 
+    // Фасад в духе панельной многоэтажки: светлая стена, сетка небольших окон,
+    // у части домов — полоса балконов с ограждениями.
     void main() {
       vec3 n = normalize(vNormal);
-      bool wall = abs(n.y) < 0.5;
-      vec2 uv = abs(n.x) > 0.5 ? vec2(vWorld.z, vWorld.y) : vec2(vWorld.x, vWorld.y);
+      bool wallx = abs(n.x) > 0.5;
+      bool wallz = abs(n.z) > 0.5;
+      bool wall = wallx || wallz;
+      vec2 uv = wallx ? vec2(vWorld.z, vWorld.y) : vec2(vWorld.x, vWorld.y);
+      float faceW = wallx ? vScale.z : vScale.x;
+      float uLocal = wallx ? (vWorld.z - vCenter.z) / vScale.z : (vWorld.x - vCenter.x) / vScale.x;
 
-      vec3 base = uWall * (0.7 + 0.6 * vSeed);
+      // палитра фасадов: белый, песочный, серо-голубой, светло-серый
+      float pk = floor(vSeed * 4.0);
+      vec3 base = pk < 1.0 ? vec3(0.80, 0.81, 0.86)
+                : pk < 2.0 ? vec3(0.82, 0.77, 0.68)
+                : pk < 3.0 ? vec3(0.64, 0.69, 0.80)
+                :            vec3(0.74, 0.75, 0.78);
       float moonLight = max(dot(n, uMoonDir), 0.0);
-      vec3 col = base * (0.3 + 0.9 * moonLight + 0.25 * max(n.y, 0.0));
-      col *= 0.75 + 0.25 * smoothstep(0.0, 30.0, vWorld.y);
+      vec3 col = base * (0.15 + 0.5 * moonLight + 0.1 * max(n.y, 0.0)) * vec3(0.8, 0.88, 1.12);
+      col *= 0.8 + 0.2 * smoothstep(0.0, 40.0, vWorld.y);
 
       if (wall) {
-        vec2 cell = vec2(2.4, 3.1);
+        vec2 cell = vec2(3.0, 3.0);
         vec2 id = floor(uv / cell);
         vec2 f = fract(uv / cell);
-        float win = step(0.2, f.x) * step(f.x, 0.8) * step(0.22, f.y) * step(f.y, 0.78);
-        win *= step(1.0, id.y); // первый этаж без окон
-        float r = hash(id + vSeed * 57.0);
-        float lit = step(0.64, r);
-        vec3 warm = mix(vec3(1.0, 0.74, 0.38), vec3(0.62, 0.8, 1.0), step(0.86, hash(id + 3.1)));
-        vec3 glass = vec3(0.012, 0.02, 0.05) + 0.03 * moonLight;
-        col = mix(col, glass, win);
-        col += warm * lit * win * (0.85 + 0.5 * hash(id + 9.7));
-        // тёплая витрина на первом этаже
-        float shop = step(0.3, f.x) * step(f.x, 0.7) * step(0.2, f.y) * step(f.y, 0.65) * step(id.y, 0.5) * step(0.0, id.y);
-        col += vec3(1.0, 0.7, 0.4) * shop * step(0.6, hash(id + 21.0)) * 0.6;
+        float fy = fract(uv.y / 3.0);
+        bool ground = vWorld.y < 3.0;
+
+        // полоса балконов
+        float hasBand = step(0.42, vSeed) * step(6.0, faceW);
+        float uc = mix(-0.22, 0.22, fract(vSeed * 7.3));
+        float inBand = hasBand * step(abs(uLocal - uc), 0.11) * (ground ? 0.0 : 1.0) * (1.0 - step(0.55, fract(vSeed * 13.7)));
+
+        // второй тип фасада: стеклянная башня с металлическим каркасом
+        float glassTower = step(0.55, fract(vSeed * 13.7));
+        if (glassTower > 0.5 && !ground) {
+          vec2 gc = vec2(1.7, 3.0);
+          vec2 gid = floor(uv / gc);
+          vec2 gf = fract(uv / gc);
+          float mullion = step(gf.x, 0.07) + step(0.93, gf.x);
+          float spandrel = step(gf.y, 0.2);
+          float panel = step(0.82, hash(vec2(gid.x, floor(uv.y / 9.0)) + vSeed * 11.0)) * (1.0 - spandrel);
+          float h01 = clamp(vWorld.y / 70.0, 0.0, 1.0);
+          vec3 sky = mix(vec3(0.045, 0.07, 0.16), vec3(0.2, 0.24, 0.42), h01);
+          vec3 glassCol = sky * (0.7 + 0.8 * moonLight) + vec3(0.03, 0.04, 0.07) * hash(gid + 2.0);
+          float lit = step(0.7, hash(gid + vSeed * 41.0));
+          vec3 warm = vec3(1.0, 0.78, 0.46);
+          glassCol += warm * lit * 0.75 * (1.0 - spandrel);
+          vec3 metal = vec3(0.3, 0.29, 0.32) * (0.5 + 0.8 * moonLight + 0.2);
+          vec3 brown = vec3(0.2, 0.11, 0.09) * (0.6 + 0.8 * moonLight);
+          col = mix(glassCol, brown, panel);
+          col = mix(col, metal * 0.7, spandrel);
+          col = mix(col, metal, clamp(mullion, 0.0, 1.0));
+          // рамка по углам здания
+          col = mix(col, metal, step(0.485, abs(uLocal)));
+        } else if (inBand > 0.5) {
+          float lit = step(0.7, hash(id + vSeed * 31.0));
+          vec3 warm = vec3(1.0, 0.72, 0.38);
+          vec3 recess = vec3(0.018, 0.022, 0.04) + warm * lit * 0.35;
+          float slab = step(fy, 0.1);
+          float rail = step(0.1, fy) * step(fy, 0.42);
+          float bars = step(0.45, fract(uv.x * 2.4));
+          vec3 railCol = mix(recess, base * 0.2, bars);
+          col = mix(recess, base * 0.5, slab);
+          col = mix(col, railCol, rail);
+        } else if (ground) {
+          // первый этаж: тёмный цоколь с витринами
+          col *= 0.55;
+          float shop = step(0.25, f.x) * step(f.x, 0.8) * step(0.2, f.y) * step(f.y, 0.7);
+          col += vec3(1.0, 0.7, 0.4) * shop * step(0.55, hash(id + 21.0 + vSeed * 9.0)) * 0.7;
+        } else {
+          // окна: тёмные квадраты в светлой стене, часть — освещена
+          float win = step(0.3, f.x) * step(f.x, 0.72) * step(0.28, f.y) * step(f.y, 0.78);
+          float r = hash(id + vSeed * 57.0);
+          float lit = step(0.66, r);
+          vec3 warm = mix(vec3(1.0, 0.76, 0.42), vec3(0.62, 0.8, 1.0), step(0.86, hash(id + 3.1)));
+          vec3 glass = vec3(0.015, 0.025, 0.06) + 0.04 * moonLight;
+          col = mix(col, glass, win);
+          col += warm * lit * win * (0.8 + 0.5 * hash(id + 9.7));
+          // тонкая рамка вокруг окна
+          float frame = step(0.26, f.x) * step(f.x, 0.76) * step(0.24, f.y) * step(f.y, 0.82) * (1.0 - win);
+          col = mix(col, col * 0.55, frame);
+        }
       }
 
       float fogAmount = 1.0 - exp(-pow(uFogDensity * vDepth, 2.0));
@@ -179,24 +243,85 @@ function buildBuildings() {
 
 function Buildings() {
   const { items } = useMemo(() => ({ items: buildBuildings() }), []);
-  const mesh = useMemo(() => {
-    const m = new THREE.InstancedMesh(
-      new THREE.BoxGeometry(1, 1, 1),
-      buildingMaterial,
-      items.length,
-    );
+  const { mesh, roofBoxes, roofTanks, hedges } = useMemo(() => {
+    const m = new THREE.InstancedMesh(new THREE.BoxGeometry(1, 1, 1), buildingMaterial, items.length);
     const o = new THREE.Object3D();
     items.forEach((b, i) => {
       o.position.set(b.x, b.h / 2, b.z);
+      o.rotation.set(0, 0, 0);
       o.scale.set(b.w, b.h, b.d);
       o.updateMatrix();
       m.setMatrixAt(i, o.matrix);
     });
     m.instanceMatrix.needsUpdate = true;
     m.frustumCulled = false;
-    return m;
+
+    // крыши: техэтаж, кондиционеры, баки с водой; у домов у дороги — живая изгородь
+    const rand = rng(23);
+    const boxes = [];
+    const tanks = [];
+    const hedgeList = [];
+    items.forEach((b) => {
+      if (b.h < 14) return;
+      const near = Math.abs(b.x) < EDGE + 14;
+      const sx = b.w * 0.5;
+      const sz = b.d * 0.5;
+      boxes.push({ x: b.x + (rand() - 0.5) * sx * 0.6, y: b.h + 1.6, z: b.z + (rand() - 0.5) * sz * 0.6, w: b.w * 0.28, h: 3.2, d: b.d * 0.34 });
+      for (let k = 0; k < 3; k++) {
+        boxes.push({
+          x: b.x - sx * 0.7 + k * 1.9,
+          y: b.h + 0.6,
+          z: b.z + sz * 0.78,
+          w: 1.5,
+          h: 1.2,
+          d: 1.1,
+        });
+      }
+      for (let k = 0; k < 2; k++) {
+        tanks.push({ x: b.x + sx * 0.55 - k * 2.6, y: b.h + 1.3, z: b.z - sz * 0.7, r: 1.0, h: 2.6 });
+      }
+      if (near) {
+        const side = Math.sign(b.x);
+        hedgeList.push({ x: side * (EDGE + 0.55), z: b.z, d: b.d * 0.96 });
+      }
+    });
+    const mk = (geo, mat, list, fn) => {
+      const im = new THREE.InstancedMesh(geo, mat, Math.max(list.length, 1));
+      im.count = list.length;
+      list.forEach((it, i) => {
+        fn(o, it);
+        o.updateMatrix();
+        im.setMatrixAt(i, o.matrix);
+      });
+      im.frustumCulled = false;
+      return im;
+    };
+    const grey = new THREE.MeshStandardMaterial({ color: "#b9bfcd", roughness: 0.85 });
+    const green = new THREE.MeshStandardMaterial({ color: "#2f5d3c", roughness: 1 });
+    return {
+      mesh: m,
+      roofBoxes: mk(new THREE.BoxGeometry(1, 1, 1), grey, boxes, (ob, it) => {
+        ob.position.set(it.x, it.y, it.z);
+        ob.scale.set(it.w, it.h, it.d);
+      }),
+      roofTanks: mk(new THREE.CylinderGeometry(1, 1, 1, 12), grey, tanks, (ob, it) => {
+        ob.position.set(it.x, it.y, it.z);
+        ob.scale.set(it.r, it.h, it.r);
+      }),
+      hedges: mk(new THREE.BoxGeometry(1, 1, 1), green, hedgeList, (ob, it) => {
+        ob.position.set(it.x, 0.45, it.z);
+        ob.scale.set(1.0, 0.9, it.d);
+      }),
+    };
   }, [items]);
-  return <primitive object={mesh} />;
+  return (
+    <>
+      <primitive object={mesh} />
+      <primitive object={roofBoxes} />
+      <primitive object={roofTanks} />
+      <primitive object={hedges} />
+    </>
+  );
 }
 
 // ─── Дорога ─────────────────────────────────────────────────────────────────
