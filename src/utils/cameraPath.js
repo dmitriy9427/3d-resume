@@ -47,7 +47,9 @@ export const PATH_LENGTH = PATH.getLength();
 
 // Камера останавливается у каждой вывески в 9 м от неё: прокрутка на этом
 // участке «стоит на месте», голова смотрит на здание, карточка читается.
-const STOP_GAP = 9;
+// На узком экране (телефон) отходим дальше, чтобы вывеска помещалась в кадр.
+export const STOP_GAP =
+  typeof window !== "undefined" && window.innerWidth < window.innerHeight ? 17 : 9;
 const PLATEAU = 0.012;
 
 function pathProgressAtZ(z) {

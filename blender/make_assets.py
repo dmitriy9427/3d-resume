@@ -226,76 +226,167 @@ def extrude_poly(pts, width, m, name="p", bevel=0.0):
 
 
 CAR_STYLES = {
-    # lower — силуэт кузова до линии окон, glass — «аквариум» стёкол, roof — (y0, y1, z)
-    "sedan": dict(
-        lower=[(2.2, 0.30), (2.2, 0.74), (1.95, 0.86), (0.95, 0.93), (-1.3, 0.93), (-1.95, 0.9), (-2.2, 0.82), (-2.2, 0.30)],
-        glass=[(0.95, 0.93), (0.30, 1.42), (-0.95, 1.42), (-1.5, 0.93)],
-        roof=(-0.95, 0.30, 1.42), r=0.33, clear=0.0),
-    "hatch": dict(
-        lower=[(1.95, 0.30), (1.95, 0.72), (1.7, 0.86), (0.85, 0.93), (-1.9, 0.93), (-1.95, 0.80), (-1.95, 0.30)],
-        glass=[(0.85, 0.93), (0.30, 1.46), (-1.55, 1.46), (-1.92, 0.95)],
-        roof=(-1.55, 0.30, 1.46), r=0.31, clear=0.0),
+    # lower — силуэт кузова до линии окон (y вперёд, z вверх), glass — стёкла,
+    # w — ширина кузова, r — радиус колеса, clear — клиренс, wing — задний спойлер
+    # fastback — как Audi A7: длинный капот, плавная крыша до самого багажника
+    "fastback": dict(
+        lower=[(2.3, 0.36), (2.3, 0.7), (2.05, 0.84), (1.0, 0.9), (-1.0, 0.93), (-2.0, 0.92), (-2.3, 0.84), (-2.3, 0.36)],
+        glass=[(1.0, 0.9), (0.25, 1.36), (-0.9, 1.42), (-1.8, 1.0), (-1.95, 0.92)],
+        w=1.9, r=0.35, clear=0.0, wing=False),
+    # super — как Ferrari F40: низкий клин, высокий задний спойлер
+    "super": dict(
+        lower=[(2.15, 0.26), (2.15, 0.48), (1.2, 0.66), (0.75, 0.76), (-0.3, 0.88), (-1.6, 0.96), (-2.1, 0.9), (-2.15, 0.28)],
+        glass=[(0.75, 0.76), (0.15, 1.12), (-0.55, 1.15), (-1.25, 0.96)],
+        w=1.96, r=0.34, clear=-0.04, wing=True),
     "suv": dict(
-        lower=[(2.25, 0.42), (2.25, 0.92), (2.0, 1.04), (0.95, 1.1), (-2.1, 1.1), (-2.28, 1.0), (-2.28, 0.42)],
-        glass=[(0.95, 1.1), (0.5, 1.72), (-1.95, 1.72), (-2.15, 1.1)],
-        roof=(-1.95, 0.5, 1.72), r=0.38, clear=0.1),
+        lower=[(2.25, 0.44), (2.25, 0.94), (2.0, 1.06), (0.95, 1.12), (-2.1, 1.12), (-2.28, 1.0), (-2.28, 0.44)],
+        glass=[(0.95, 1.12), (0.5, 1.74), (-1.95, 1.74), (-2.15, 1.12)],
+        w=1.95, r=0.39, clear=0.1, wing=False),
 }
 
 
-def car(name, color, style="sedan"):
+def smooth(o):
+    bpy.ops.object.select_all(action="DESELECT")
+    o.select_set(True)
+    bpy.context.view_layer.objects.active = o
+    try:
+        bpy.ops.object.shade_smooth_by_angle(angle=math.radians(38))
+    except Exception:
+        bpy.ops.object.shade_smooth()
+
+
+def wheel(x, y, r, tire, rim, disc):
+    out = []
+    side = 1 if x > 0 else -1
+    out.append(cyl(r, 0.26, (x, y, r), tire, rot=(0, math.radians(90), 0), verts=20))
+    out.append(cyl(r * 0.66, 0.27, (x + side * 0.012, y, r), rim, rot=(0, math.radians(90), 0), verts=20))
+    out.append(cyl(r * 0.5, 0.28, (x + side * 0.012, y, r), disc, rot=(0, math.radians(90), 0), verts=16))
+    for k in range(5):
+        out.append(box((0.03, r * 1.25, 0.06), (x + side * 0.03, y, r), rim, rot=(math.radians(k * 36), 0, 0)))
+    out.append(cyl(r * 0.14, 0.3, (x + side * 0.03, y, r), disc, rot=(0, math.radians(90), 0), verts=8))
+    return out
+
+
+def car(name, color, style="fastback"):
     st = CAR_STYLES[style]
-    body = mat("car_" + color, color, 0.3, metal=0.6)
-    glass = mat("glass", "#0a1020", 0.1, metal=0.3)
+    w = st["w"]
+    body = mat("car_" + color, color, 0.4, metal=0.1)
+    glass = mat("glass", "#0a1020", 0.08, metal=0.3)
     black = mat("rubber", "#0a0a0d", 0.9)
     trim = mat("trim", "#15161c", 0.5)
-    rim = mat("rim", "#9aa0b0", 0.3, metal=0.9)
+    rim = mat("rim", "#b9bfce", 0.35, metal=0.3)
+    disc = mat("disc", "#202228", 0.5, metal=0.6)
     head = mat("headlight", "#fff2cf", 0.3, "#fff2cf", 4.0)
     tail = mat("taillight", "#ff2a2a", 0.3, "#ff2a2a", 3.0)
     plate = mat("plate", "#e8e6dc", 0.6)
+    chrome = mat("chrome", "#d8dce6", 0.3, metal=0.3)
     lo = st["lower"]
     front = max(p[0] for p in lo)
     rear = min(p[0] for p in lo)
-    top = max(p[1] for p in st["glass"])
+    gl = st["glass"]
+    top = max(p[1] for p in gl)
     r = st["r"]
+    c = st["clear"]
     parts = [
-        extrude_poly(lo, 1.82, body, "body", bevel=0.07),
-        extrude_poly(st["glass"], 1.64, glass, "glass", bevel=0.03),
-        extrude_poly([(st["roof"][0] - 0.02, top - 0.02), (st["roof"][1] + 0.02, top - 0.02), (st["roof"][1], top + 0.05), (st["roof"][0], top + 0.05)], 1.58, body, "roof", bevel=0.02),
+        extrude_poly(lo, w, body, "body", bevel=0.1),
+        extrude_poly(gl, w - 0.26, glass, "glass", bevel=0.05),
+        # крыша: тонкая крышка того же цвета
+        extrude_poly([(gl[1][0] + 0.02, top + 0.03), (gl[2][0] - 0.02, top + 0.03), (gl[2][0] - 0.06, top - 0.04), (gl[1][0] + 0.06, top - 0.04)], w - 0.3, body, "roof", bevel=0.03),
     ]
-    # колёса с дисками
-    wz = r
-    for x in (-0.92, 0.92):
-        for y in (front - 0.85, rear + 0.85):
-            parts.append(cyl(r, 0.24, (x, y, wz), black, rot=(0, math.radians(90), 0), verts=14))
-            parts.append(cyl(r * 0.62, 0.26, (x + (0.015 if x > 0 else -0.015), y, wz), rim, rot=(0, math.radians(90), 0), verts=10))
-    # арки: тёмные вставки над колёсами
-    for x in (-0.905, 0.905):
-        for y in (front - 0.85, rear + 0.85):
-            parts.append(box((0.04, r * 2.5, r * 1.1), (x, y, wz + r * 0.85), trim))
-    # бамперы, решётка, зеркала, номера
-    parts.append(box((1.84, 0.14, 0.26), (0, front - 0.03, 0.46 + st["clear"]), trim, bevel=0.03))
-    parts.append(box((1.84, 0.14, 0.26), (0, rear + 0.03, 0.46 + st["clear"]), trim, bevel=0.03))
-    parts.append(box((0.8, 0.05, 0.16), (0, front + 0.0, 0.7 + st["clear"]), trim))
-    for x in (-0.95, 0.95):
-        parts.append(box((0.12, 0.2, 0.1), (x, st["glass"][0][0] - 0.25, st["glass"][0][1] + 0.05), body))
-    parts.append(box((0.5, 0.02, 0.12), (0, front + 0.05, 0.42 + st["clear"]), plate))
-    parts.append(box((0.5, 0.02, 0.12), (0, rear - 0.05, 0.5 + st["clear"]), plate))
-    # фары и задние огни
-    for x in (-0.62, 0.62):
-        parts.append(box((0.42, 0.06, 0.13), (x, front - 0.01, 0.74 + st["clear"]), head, bevel=0.015))
-    parts.append(box((1.6, 0.05, 0.1), (0, rear + 0.0, 0.78 + st["clear"]), tail))
-    return join(parts, name)
+    # пороги и низ
+    parts.append(box((w - 0.02, front - rear - 0.5, 0.1), (0, (front + rear) / 2, 0.3 + c), trim, bevel=0.02))
+    # колёса, диски со спицами, арки
+    wy_f, wy_r = front - 0.82, rear + 0.82
+    for x in (-w / 2 + 0.03, w / 2 - 0.03):
+        for y in (wy_f, wy_r):
+            parts += wheel(x, y, r, black, rim, disc)
+            parts.append(box((0.05, r * 2.35, r * 0.95), (x * 1.0, y, r + r * 1.0), trim))
+    # передок: бампер, решётка, воздухозаборники, фары
+    parts.append(box((w, 0.16, 0.24), (0, front - 0.04, 0.46 + c), trim, bevel=0.04))
+    parts.append(box((w * 0.55, 0.05, 0.17), (0, front + 0.0, 0.66 + c), trim, bevel=0.01))
+    parts.append(box((w * 0.5, 0.02, 0.012), (0, front + 0.02, 0.7 + c), chrome))
+    for x in (-0.66, 0.66):
+        parts.append(box((0.42, 0.06, 0.1), (x, front - 0.01, 0.74 + c), head, bevel=0.02))
+        parts.append(box((0.3, 0.05, 0.09), (x * 1.25, front - 0.04, 0.5 + c), trim))
+    parts.append(box((0.5, 0.02, 0.12), (0, front + 0.05, 0.42 + c), plate))
+    # корма
+    parts.append(box((w, 0.16, 0.26), (0, rear + 0.04, 0.46 + c), trim, bevel=0.04))
+    parts.append(box((w * 0.82, 0.05, 0.09), (0, rear + 0.0, 0.8 + c), tail, bevel=0.02))
+    parts.append(box((0.5, 0.02, 0.12), (0, rear - 0.05, 0.52 + c), plate))
+    # выхлопные трубы
+    for x in (-0.5, 0.5):
+        parts.append(cyl(0.045, 0.1, (x, rear - 0.04, 0.36 + c), chrome, rot=(math.radians(90), 0, 0), verts=8))
+    # зеркала
+    for x in (-w / 2 - 0.04, w / 2 + 0.04):
+        parts.append(box((0.14, 0.22, 0.11), (x, gl[0][0] - 0.2, gl[0][1] + 0.1), body, bevel=0.03))
+    # антенна «плавник» на крыше
+    if style != "super":
+        parts.append(box((0.04, 0.2, 0.07), (0, gl[2][0] + 0.25, top + 0.06), black))
+    if st["wing"]:
+        # спойлер как у F40: две стойки и широкая плоскость
+        for x in (-0.7, 0.7):
+            parts.append(box((0.05, 0.12, 0.46), (x, rear + 0.2, 1.12), body))
+        parts.append(box((1.84, 0.5, 0.05), (0, rear + 0.05, 1.36), body, bevel=0.01))
+        parts.append(box((0.04, 0.5, 0.18), (-0.92, rear + 0.05, 1.3), body))
+        parts.append(box((0.04, 0.5, 0.18), (0.92, rear + 0.05, 1.3), body))
+    o = join(parts, name)
+    smooth(o)
+    return o
 
 
 def build_props():
     clear()
-    items = [tree(), tree_b(), bench(), bin_(), car("car_a", "#8a2f3a", "sedan"), car("car_b", "#2f5a8a", "hatch"), car("car_c", "#b8b3a2", "suv")]
+    items = [tree(), tree_b(), bench(), bin_(), car("car_a", "#5b6372", "fastback"), car("car_b", "#b3202a", "super"), car("car_c", "#26344f", "suv")]
     for i, o in enumerate(items):
         o.location = (i * 6, 0, 0)
     export(os.path.join(OUT, "props.glb"), items)
 
 
 # ─── Комната (координаты как в three.js, x/z → x/-y) ───────────────────────
+def leaf(loc, length, width, yaw, pitch, m):
+    """Лист-«лодочка»: сплюснутая сфера, основание в loc, наклон pitch от вертикали, поворот yaw."""
+    bpy.ops.mesh.primitive_ico_sphere_add(radius=1, subdivisions=1, location=(0, 0, 0))
+    o = bpy.context.active_object
+    o.scale = (width, 0.03, length)
+    bpy.ops.object.transform_apply(location=False, rotation=False, scale=True)
+    for v in o.data.vertices:
+        v.co.z += length
+    o.rotation_euler = (pitch, 0, yaw)
+    o.location = loc
+    return finish(o, m)
+
+
+def flower(loc, stem_h, petal_m, center_m, stem_m, leaf_m, tilt=(0.0, 0.0)):
+    """Цветок: стебель, пара листьев, венчик из 8 лепестков и серединка."""
+    x, y, z = loc
+    tx, ty = tilt
+    top = (x + tx, y + ty, z + stem_h)
+    out = [branch((x, y, z), top, 0.014, 0.01, stem_m)]
+    out.append(leaf((x + tx * 0.4, y + ty * 0.4, z + stem_h * 0.35), 0.12, 0.035, 0.3, 1.0, leaf_m))
+    out.append(leaf((x + tx * 0.5, y + ty * 0.5, z + stem_h * 0.5), 0.1, 0.03, 3.4, 1.0, leaf_m))
+    for k in range(8):
+        a = k * math.pi / 4
+        out.append(leaf(top, 0.07, 0.03, a, 1.25, petal_m))
+    out.append(ico(0.028, (top[0], top[1], top[2] + 0.012), center_m, sub=1))
+    return out
+
+
+def leafy_plant(base, pot_top, stem_m, leaf_ms, count=11, height=0.9, seed=1):
+    """Комнатное растение: центральный ствол и листья по спирали, крупные снизу."""
+    import random
+    rnd = random.Random(seed)
+    x, y, z = base
+    out = [branch((x, y, z), (x, y, z + height), 0.035, 0.015, stem_m)]
+    for k in range(count):
+        t = k / (count - 1)
+        yaw = k * 2.4 + rnd.random() * 0.4
+        ln = 0.42 - 0.18 * t + rnd.random() * 0.06
+        wd = ln * 0.55
+        pz = z + 0.15 + height * (0.15 + 0.85 * t) * 0.9
+        out.append(leaf((x, y, pz), ln, wd, yaw, 0.55 + 0.5 * (1 - t) + rnd.random() * 0.2, leaf_ms[k % len(leaf_ms)]))
+    return out
+
+
 def build_room():
     clear()
     wood = mat("desk_wood", "#7a5238", 0.7)
@@ -382,10 +473,15 @@ def build_room():
         P.append(ico(0.025, (cx + math.cos(ang + 0.5) * 0.3, cy + math.sin(ang + 0.5) * 0.3, 3.28), mat("crystal", "#cfe6ff", 0.1, "#9cc8ff", 0.8), sub=1))
     P.append(cyl(0.012, 0.18, (cx, cy, 3.25), gold, verts=6))
     P.append(ico(0.07, (cx, cy, 3.12), bulb, sub=1))
-    # растение в углу справа
-    P.append(cyl(0.25, 0.42, (3.3, 3.3, 0.21), pot, verts=10))
-    for i, (dx, dy, dz, r) in enumerate([(0, 0, 0.85, 0.42), (0.18, 0.1, 1.2, 0.3), (-0.15, -0.1, 1.05, 0.32)]):
-        P.append(ico(r, (3.3 + dx, 3.3 + dy, dz), leaves))
+    # растение в углу справа: кадка и пышная крона из листьев
+    leaves2 = mat("plant_leaves2", "#2f7a4c", 0.7)
+    leaves3 = mat("plant_leaves3", "#4a9a5c", 0.7)
+    stemg = mat("stem", "#3a5a34", 0.8)
+    P.append(cyl(0.27, 0.45, (3.3, 3.3, 0.225), pot, verts=14))
+    P.append(cyl(0.285, 0.05, (3.3, 3.3, 0.45), mat("pot_rim", "#a95537", 0.8), verts=14))
+    P.append(cyl(0.25, 0.03, (3.3, 3.3, 0.47), mat("soil", "#2a1f18", 1.0), verts=14))
+    P += leafy_plant((3.3, 3.3, 0.47), 0.47, stemg, [leaves, leaves2, leaves3], count=14, height=1.1, seed=3)
+    P += leafy_plant((3.22, 3.36, 0.47), 0.47, stemg, [leaves2, leaves3], count=8, height=0.7, seed=9)
     # рамка с картиной на правой стене (x=4)
     P.append(box((0.04, 1.3, 0.9), (3.97, 0.4, 2.0), frame))
     P.append(box((0.045, 1.15, 0.75), (3.96, 0.4, 2.0), art))
@@ -399,9 +495,16 @@ def build_room():
     for sx in (-1, 1):
         for k in range(4):
             P.append(box((0.22, 0.05, 2.7), (sx * (1.95 + k * 0.2 - 0.3), 3.82 - (k % 2) * 0.04, 2.15), curtain))
-    # горшок на подоконнике
-    P.append(cyl(0.1, 0.16, (-1.2, 3.9, 1.0), pot, verts=8))
-    P.append(ico(0.16, (-1.2, 3.9, 1.22), leaves, sub=1))
+    # горшок с цветами на подоконнике
+    petal = mat("petal", "#f4b6cf", 0.6)
+    petal2 = mat("petal2", "#fff3d6", 0.6)
+    ycen = mat("flower_center", "#e8b43a", 0.6)
+    P.append(cyl(0.11, 0.17, (-1.2, 3.9, 1.0), pot, verts=12))
+    P.append(cyl(0.12, 0.03, (-1.2, 3.9, 1.09), mat("pot_rim", "#a95537", 0.8), verts=12))
+    P += flower((-1.2, 3.9, 1.1), 0.34, petal, ycen, stemg, leaves, tilt=(-0.03, 0.04))
+    P += flower((-1.17, 3.93, 1.1), 0.44, petal2, ycen, stemg, leaves2, tilt=(0.05, -0.02))
+    P += flower((-1.23, 3.87, 1.1), 0.28, petal, ycen, stemg, leaves, tilt=(-0.06, -0.03))
+    P += flower((-1.2, 3.9, 1.1), 0.5, petal2, ycen, stemg, leaves3, tilt=(0.0, 0.07))
 
     room = join(P, "room_props")
     export(os.path.join(OUT, "room.glb"), [room])

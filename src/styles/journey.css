@@ -1,3 +1,10 @@
+.stage canvas {
+  cursor: grab;
+  touch-action: pan-y;
+}
+.stage canvas:active {
+  cursor: grabbing;
+}
 .stage {
   position: fixed;
   inset: 0;
