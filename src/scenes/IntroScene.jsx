@@ -1,10 +1,6 @@
-import { Box, Plane, useTexture } from "@react-three/drei";
-import { useEffect, useMemo } from "react";
+import { Plane, useGLTF } from "@react-three/drei";
+import { useMemo } from "react";
 import * as THREE from "three";
-
-// один тайл текстуры кирпича ≈ столько мировых юнитов, чтобы кирпичи были
-// одного размера на всех сегментах стены у окна, несмотря на разную ширину/высоту
-const BRICK_TILE = 2;
 
 const ROOM_W = 8;
 const ROOM_H = 4;
@@ -119,29 +115,16 @@ function usePlasterWallTexture() {
   }, []);
 }
 
+// Мебель комнаты — из blender/make_assets.py (public/models/room.glb).
+function RoomProps() {
+  const { scene } = useGLTF("/models/room.glb");
+  return <primitive object={scene} />;
+}
+useGLTF.preload("/models/room.glb");
+
 export default function IntroScene() {
   const floorMap = usePlankFloorTexture();
   const wallMap = usePlasterWallTexture();
-
-  const windowWallMap = useTexture("/textures/right.jpg");
-  useEffect(() => {
-    windowWallMap.colorSpace = THREE.SRGBColorSpace;
-    windowWallMap.wrapS = windowWallMap.wrapT = THREE.RepeatWrapping;
-  }, [windowWallMap]);
-
-  // у каждого сегмента стены своя ширина/высота — клонируем текстуру и задаём
-  // repeat под конкретный размер, чтобы кирпич был одного масштаба везде
-  const windowWallSegmentMaps = useMemo(
-    () =>
-      backWallSegments.map((seg) => {
-        const tex = windowWallMap.clone();
-        tex.needsUpdate = true;
-        tex.wrapS = tex.wrapT = THREE.RepeatWrapping;
-        tex.repeat.set(seg.w / BRICK_TILE, seg.h / BRICK_TILE);
-        return tex;
-      }),
-    [windowWallMap],
-  );
 
   return (
     <>
@@ -183,8 +166,8 @@ export default function IntroScene() {
       {backWallSegments.map((seg, i) => (
         <Plane key={i} args={[seg.w, seg.h]} position={[seg.x, seg.y, ROOM_Z]}>
           <meshStandardMaterial
-            map={windowWallSegmentMaps[i]}
-            color="#4c5ba3"
+            map={wallMap}
+            color="#9a93b8"
             metalness={0}
             roughness={0.9}
             side={THREE.DoubleSide}
@@ -192,40 +175,7 @@ export default function IntroScene() {
         </Plane>
       ))}
 
-      {/* стол */}
-      <Box args={[2, 0.1, 1]} position={[0, 0.75, -1.5]}>
-        <meshStandardMaterial color="#2b3050" roughness={0.5} metalness={0} />
-      </Box>
-      {/* ножки */}
-      {[-0.9, 0.9].map((x) =>
-        [-0.45, 0.45].map((z, i) => (
-          <Box
-            key={x + "-" + z + i}
-            args={[0.05, 0.75, 0.05]}
-            position={[x, 0.375, -1.5 + z]}
-          >
-            <meshStandardMaterial color="#232748" metalness={0} />
-          </Box>
-        )),
-      )}
-
-      {/* ноутбук – экран с эмиссией */}
-      <Box args={[0.9, 0.5, 0.03]} position={[0, 1.05, -1.3]}>
-        <meshStandardMaterial
-          emissive="#4d9dff"
-          emissiveIntensity={2}
-          color="#0a0e20"
-        />
-      </Box>
-
-      {/* клавиатура */}
-      <Plane
-        args={[0.8, 0.3]}
-        rotation={[-Math.PI / 2, 0, 0]}
-        position={[0, 0.76, -1.5]}
-      >
-        <meshStandardMaterial color="#262b4a" metalness={0} />
-      </Plane>
+      <RoomProps />
 
       {/* освещение: three r183+ по умолчанию использует физически корректные
           единицы, поэтому старые "киношные" intensity вроде 2-4 почти не видны —
@@ -238,6 +188,8 @@ export default function IntroScene() {
         distance={14}
         decay={1.4}
       />
+      {/* тёплая лампа на столе */}
+      <pointLight position={[0.8, 1.5, -1.6]} color="#ffb866" intensity={9} distance={9} decay={1.6} />
       {/* подсветка от окна, имитирует свет звёзд/города */}
       <pointLight
         position={[0, 2.2, -3.3]}

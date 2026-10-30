@@ -3,7 +3,7 @@ import { STOPS } from "../data/resume";
 
 // Улица идёт от окна комнаты вдоль -Z. Здания стоят по краям дороги.
 export const ROAD_HALF = 6;
-export const EDGE = 7.2; // линия фасадов
+export const EDGE = 9; // линия фасадов
 export const STREET_START = -4;
 export const STOP_SPACING = 22;
 export const FIRST_STOP_Z = -34;

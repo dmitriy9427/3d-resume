@@ -9,6 +9,7 @@ import {
   stopZ,
 } from "../utils/cameraPath";
 import { MOON_DIR } from "./Sky";
+import Props from "./Props";
 
 export const FOG_COLOR = "#141a3a";
 export const FOG_DENSITY = 0.0105;
@@ -458,6 +459,7 @@ export default function Street() {
       <Road />
       <Buildings />
       <Lamps />
+      <Props />
       <Signs />
     </>
   );
