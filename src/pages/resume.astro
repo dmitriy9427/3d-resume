@@ -1,0 +1,125 @@
+---
+import Layout from "../layouts/Layout.astro";
+import { SKILLS, PROJECTS, CONTACTS } from "../data/resume";
+---
+
+<Layout scrollable>
+  <main>
+    <a href="/" class="back-link">← 3D-версия</a>
+
+    <h1>Резюме</h1>
+
+    <section>
+      <h2>Навыки</h2>
+      <ul class="skills">
+        {SKILLS.map((s) => <li>{s}</li>)}
+      </ul>
+    </section>
+
+    <section>
+      <h2>Проекты</h2>
+      {
+        PROJECTS.map((p) => (
+          <article class="project">
+            <h3>{p.title}</h3>
+            <p>{p.desc}</p>
+          </article>
+        ))
+      }
+    </section>
+
+    <section>
+      <h2>Контакты</h2>
+      <ul class="contacts">
+        {
+          CONTACTS.map((c) => (
+            <li>
+              {c.label}: <a href={c.href}>{c.value}</a>
+            </li>
+          ))
+        }
+      </ul>
+    </section>
+  </main>
+</Layout>
+
+<style>
+  main {
+    max-width: 720px;
+    margin: 0 auto;
+    padding: 4em 1.5em 6em;
+    font-family: system-ui, sans-serif;
+    color: #eaf6ff;
+    background: #0b1024;
+    min-height: 100dvh;
+  }
+
+  .back-link {
+    display: inline-block;
+    margin-bottom: 2em;
+    color: #66ccff;
+    text-decoration: none;
+    font-size: 0.9em;
+  }
+  .back-link:hover {
+    text-decoration: underline;
+  }
+
+  h1 {
+    margin: 0 0 1em;
+  }
+
+  section {
+    margin-bottom: 2.5em;
+  }
+
+  h2 {
+    font-size: 1.1em;
+    letter-spacing: 0.02em;
+    color: #bfe6ff;
+    border-bottom: 1px solid rgba(120, 180, 255, 0.25);
+    padding-bottom: 0.4em;
+    margin-bottom: 1em;
+  }
+
+  .skills {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.6em;
+  }
+  .skills li {
+    background: rgba(120, 180, 255, 0.12);
+    border: 1px solid rgba(120, 180, 255, 0.3);
+    border-radius: 999px;
+    padding: 0.35em 0.9em;
+    font-size: 0.9em;
+  }
+
+  .project {
+    margin-bottom: 1.2em;
+  }
+  .project h3 {
+    margin: 0 0 0.3em;
+    font-size: 1em;
+  }
+  .project p {
+    margin: 0;
+    opacity: 0.75;
+    font-size: 0.92em;
+  }
+
+  .contacts {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+  }
+  .contacts li {
+    margin-bottom: 0.5em;
+  }
+  .contacts a {
+    color: #66ccff;
+  }
+</style>
