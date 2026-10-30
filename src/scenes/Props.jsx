@@ -40,7 +40,7 @@ const CROSS_X = 80;
 
 function buildLayout() {
   const rand = rng(11);
-  const items = { tree: [], bench: [], bin: [], car_a: [], car_b: [], car_c: [] };
+  const items = { tree: [], tree_b: [], bench: [], bin: [], car_a: [], car_b: [], car_c: [] };
   // зоны вывесок: здесь деревья и скамейки не ставим — они закрывали бы вывеску
   const heroZones = STOPS.map((s, i) =>
     s.side ? { side: s.side === "left" ? -1 : 1, z: stopZ(i) } : null,
@@ -52,11 +52,11 @@ function buildLayout() {
   for (const side of [-1, 1]) {
     for (let z = side < 0 ? -26 : -37; z > STREET_END; z -= 22) {
       if (blocked(side, z)) continue;
-      items.tree.push({
+      items[rand() > 0.5 ? "tree" : "tree_b"].push({
         x: side * (ROAD_HALF + 1.9),
         z,
         rot: rand() * Math.PI * 2,
-        s: 0.9 + rand() * 0.35,
+        s: 0.85 + rand() * 0.3,
       });
     }
   }

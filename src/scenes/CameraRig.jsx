@@ -2,7 +2,7 @@ import { useEffect, useRef } from "react";
 import { useFrame, useThree } from "@react-three/fiber";
 import * as THREE from "three";
 import { STOPS } from "../data/resume";
-import { EDGE, PATH, PATH_LENGTH, PROMENADE_END, STREET_END, stopZ } from "../utils/cameraPath";
+import { EDGE, PATH, PATH_LENGTH, PROMENADE_END, STREET_END, scrollToPath, stopZ } from "../utils/cameraPath";
 import { initScroll, scrollState, useSceneStore } from "../store/useSceneStore";
 
 const sstep = (e0, e1, x) => {
@@ -23,7 +23,7 @@ export default function CameraRig() {
     const dt = Math.min(delta, 0.05);
     scrollState.current +=
       (scrollState.target - scrollState.current) * (1 - Math.exp(-dt * 5));
-    const u = THREE.MathUtils.clamp(scrollState.current, 0, 0.9999);
+    const u = THREE.MathUtils.clamp(scrollToPath(scrollState.current), 0, 0.9999);
     const p = PATH.getPointAt(u);
     const ahead = PATH.getPointAt(Math.min(1, u + 0.004));
     fwd.current.subVectors(ahead, p).normalize();
@@ -44,12 +44,12 @@ export default function CameraRig() {
       const sz = stopZ(i);
       const dz = p.z - sz;
       const sx = s.side === "left" ? -EDGE : EDGE;
-      const angle = THREE.MathUtils.clamp(Math.atan2(-(sx - p.x), dz), -1.3, 1.3);
-      const w = sstep(36, 20, dz) * sstep(2, 10, dz);
+      const angle = THREE.MathUtils.clamp(Math.atan2(-(sx - p.x), dz), -1.45, 1.45);
+      const w = sstep(32, 18, dz) * sstep(-6, 4, dz);
       targetYaw += angle * 1.0 * w;
       const dist = Math.hypot(sx - p.x, dz);
       targetPitch += Math.atan2(4.6 - p.y, dist) * 0.8 * w;
-      if (dz >= 8 && dz < bestDz) {
+      if (dz >= 3 && dz < bestDz) {
         bestDz = dz;
         active = i;
       }

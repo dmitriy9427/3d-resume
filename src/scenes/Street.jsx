@@ -8,6 +8,7 @@ import {
   HERO_LEN,
   PROMENADE_END,
   ROAD_HALF,
+  ROOM_FLOOR,
   SAND_END,
   STREET_END,
   stopZ,
@@ -172,7 +173,7 @@ function buildBuildings() {
   });
   // дом, в котором комната: длинный низкий корпус на торце улицы, за перекрёстком.
   // Комната стоит на его крыше (ROOM_FLOOR = высота корпуса).
-  items.push({ x: 0, z: 6, w: 160, h: 7, d: 20 });
+  items.push({ x: 0, z: 6, w: 160, h: ROOM_FLOOR - 0.06, d: 20 });
   return items;
 }
 
@@ -291,7 +292,7 @@ function Road() {
       {/* поперечная улица у дома */}
       <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.004, CROSS_Z]}>
         <planeGeometry args={[160, ROAD_HALF * 2]} />
-        <meshStandardMaterial map={cross} roughness={0.55} metalness={0.1} />
+        <meshStandardMaterial map={cross} roughness={0.55} metalness={0.1} polygonOffset polygonOffsetFactor={-2} polygonOffsetUnits={-2} />
       </mesh>
     </>
   );
@@ -390,7 +391,7 @@ function Seaside() {
       {/* набережная */}
       <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.003, STREET_END - promLen / 2]}>
         <planeGeometry args={[160, promLen]} />
-        <meshStandardMaterial map={stone} roughness={0.8} />
+        <meshStandardMaterial map={stone} roughness={0.8} polygonOffset polygonOffsetFactor={-2} polygonOffsetUnits={-2} />
       </mesh>
       {/* пляж */}
       <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -0.04, PROMENADE_END - sandLen / 2]}>
@@ -440,7 +441,12 @@ function Lamps() {
   const lamps = useMemo(() => {
     const out = [];
     for (let z = -22, i = 0; z > PROMENADE_END + 2; z -= 16, i++) {
-      out.push({ x: (i % 2 ? 1 : -1) * (ROAD_HALF + 0.5), z });
+      const side = i % 2 ? 1 : -1;
+      // столб не должен стоять перед вывеской
+      const blocks = STOPS.some(
+        (st, k) => st.side && (st.side === "left" ? -1 : 1) === side && Math.abs(stopZ(k) - z) < 5,
+      );
+      if (!blocks) out.push({ x: side * (ROAD_HALF + 0.5), z });
     }
     return out;
   }, []);

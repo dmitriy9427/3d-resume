@@ -128,7 +128,7 @@ export default function IntroScene() {
   const wallMap = usePlasterWallTexture();
 
   return (
-    <group position={[0, ROOM_FLOOR, 0]}>
+    <group position={[0, ROOM_FLOOR + 0.03, 0]}>
       {/* пол */}
       <Plane
         args={[ROOM_W, ROOM_W]}
@@ -189,6 +189,8 @@ export default function IntroScene() {
         distance={14}
         decay={1.4}
       />
+      {/* люстра */}
+      <pointLight position={[0, 3.3, -1.5]} color="#ffd9a0" intensity={14} distance={10} decay={1.5} />
       {/* тёплая лампа на столе */}
       <pointLight position={[0.8, 1.5, -1.6]} color="#ffb866" intensity={9} distance={9} decay={1.6} />
       {/* подсветка от окна, имитирует свет звёзд/города */}

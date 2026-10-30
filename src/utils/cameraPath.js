@@ -45,13 +45,42 @@ export const PATH = new THREE.CatmullRomCurve3(
 PATH.arcLengthDivisions = 2000;
 export const PATH_LENGTH = PATH.getLength();
 
-// Прогресс (0..1), при котором вывеска остановки i в 12 м впереди.
-export function stopProgress(i) {
-  if (i === 0) return 0;
-  const target = stopZ(i) + 12;
+// Камера останавливается у каждой вывески в 9 м от неё: прокрутка на этом
+// участке «стоит на месте», голова смотрит на здание, карточка читается.
+const STOP_GAP = 9;
+const PLATEAU = 0.012;
+
+function pathProgressAtZ(z) {
   for (let k = 0; k <= 2000; k++) {
     const u = k / 2000;
-    if (PATH.getPointAt(u).z <= target) return u;
+    if (PATH.getPointAt(u).z <= z) return u;
   }
   return 1;
+}
+
+const stopsU = STOPS.map((_, i) => (i === 0 ? 0 : pathProgressAtZ(stopZ(i) + STOP_GAP)));
+const m = STOPS.length - 1;
+// узлы соответствия «прокрутка → путь»: (s, u)
+const KNOTS = [[0, 0]];
+for (let k = 1; k <= m; k++) {
+  const sk = stopsU[k] * (1 - m * PLATEAU) + (k - 1) * PLATEAU;
+  KNOTS.push([sk, stopsU[k]], [sk + PLATEAU, stopsU[k]]);
+}
+KNOTS.push([1, 1]);
+
+/** Прогресс прокрутки (0..1) → прогресс по пути (0..1), с паузами у вывесок. */
+export function scrollToPath(s) {
+  for (let k = 1; k < KNOTS.length; k++) {
+    if (s <= KNOTS[k][0]) {
+      const [s0, u0] = KNOTS[k - 1];
+      const [s1, u1] = KNOTS[k];
+      return s1 === s0 ? u1 : u0 + ((s - s0) / (s1 - s0)) * (u1 - u0);
+    }
+  }
+  return 1;
+}
+
+/** Прогресс прокрутки, при котором камера стоит у вывески остановки i. */
+export function stopScroll(i) {
+  return i === 0 ? 0 : KNOTS[2 * i - 1][0] + PLATEAU / 2;
 }

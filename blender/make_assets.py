@@ -109,18 +109,69 @@ def export(path, objs):
 
 
 # ─── Улица ──────────────────────────────────────────────────────────────────
+def lumpy(r, loc, m, sub=2, amp=0.22, squash=1.0, seed=0):
+    """Икосфера со случайным смещением вершин — «комок» листвы."""
+    import random
+    rnd = random.Random(seed)
+    bpy.ops.mesh.primitive_ico_sphere_add(radius=r, subdivisions=sub, location=loc)
+    o = bpy.context.active_object
+    for v in o.data.vertices:
+        k = 1 + (rnd.random() * 2 - 1) * amp
+        v.co.x *= k
+        v.co.y *= k
+        v.co.z *= k * squash
+        if v.co.z < -r * 0.45 * squash:  # плоское дно кроны
+            v.co.z = -r * 0.45 * squash
+    return finish(o, m)
+
+
+def branch(p0, p1, r0, r1, m):
+    import mathutils
+    a, b = mathutils.Vector(p0), mathutils.Vector(p1)
+    d = b - a
+    bpy.ops.mesh.primitive_cone_add(vertices=6, radius1=r0, radius2=r1, depth=d.length, location=(a + b) / 2)
+    o = bpy.context.active_object
+    o.rotation_euler = d.to_track_quat("Z", "Y").to_euler()
+    return finish(o, m)
+
+
 def tree():
-    trunk = mat("bark", "#3b2a22", 0.9)
-    leaf = mat("leaf", "#2b6a58", 0.85)
-    leaf2 = mat("leaf2", "#357a5f", 0.85)
+    """Лиственное дерево: конусный ствол с расширением у земли, ветви, крона из комков."""
+    bark = mat("bark", "#3b2a22", 0.95)
+    dark = mat("leaf_dark", "#1f4d42", 0.9)
+    mid = mat("leaf", "#2c6b55", 0.9)
+    light = mat("leaf_light", "#3b8566", 0.9)
     parts = [
-        cyl(0.17, 2.6, (0, 0, 1.3), trunk, verts=7),
-        ico(1.55, (0, 0, 3.4), leaf, squash=0.9),
-        ico(1.05, (0.8, 0.2, 2.8), leaf2),
-        ico(1.1, (-0.7, -0.4, 3.0), leaf2),
-        ico(0.9, (0.1, 0.6, 4.2), leaf),
+        branch((0, 0, 0), (0, 0, 2.5), 0.3, 0.13, bark),
+        branch((0, 0, 2.2), (0.9, 0.3, 3.4), 0.11, 0.05, bark),
+        branch((0, 0, 2.4), (-0.8, -0.5, 3.5), 0.1, 0.05, bark),
+        branch((0, 0, 2.6), (0.1, 0.9, 3.6), 0.09, 0.04, bark),
     ]
+    clumps = [
+        ((0, 0, 3.7), 1.25, mid), ((0.95, 0.35, 3.4), 0.95, mid), ((-0.9, -0.5, 3.5), 1.0, dark),
+        ((0.1, 0.95, 3.6), 0.9, dark), ((-0.5, 0.7, 4.2), 0.9, light), ((0.6, -0.6, 4.3), 0.95, light),
+        ((0, 0.1, 4.6), 0.85, light), ((1.1, -0.3, 4.0), 0.7, mid), ((-1.1, 0.2, 4.0), 0.75, dark),
+    ]
+    for n, (loc, r, m) in enumerate(clumps):
+        parts.append(lumpy(r, loc, m, amp=0.2, squash=0.85, seed=n + 3))
     return join(parts, "tree")
+
+
+def tree_b():
+    """Высокое узкое дерево (тополь): вертикальная крона из наложенных комков."""
+    bark = mat("bark", "#3b2a22", 0.95)
+    dark = mat("leaf_dark", "#1f4d42", 0.9)
+    mid = mat("leaf", "#2c6b55", 0.9)
+    light = mat("leaf_light", "#3b8566", 0.9)
+    parts = [branch((0, 0, 0), (0, 0, 3.6), 0.24, 0.1, bark)]
+    zs = [3.0, 3.8, 4.6, 5.4, 6.2, 6.9]
+    for n, z in enumerate(zs):
+        r = [0.95, 1.1, 1.05, 0.95, 0.75, 0.5][n]
+        m = [dark, mid, mid, light, light, light][n]
+        parts.append(lumpy(r, (0.12 * ((n % 2) * 2 - 1), 0.1 * (1 - (n % 3)), z), m, amp=0.18, squash=1.25, seed=n + 20))
+    parts.append(lumpy(0.7, (0.55, 0.2, 3.7), dark, amp=0.2, squash=1.0, seed=40))
+    parts.append(lumpy(0.65, (-0.5, -0.3, 4.3), mid, amp=0.2, squash=1.0, seed=41))
+    return join(parts, "tree_b")
 
 
 def bench():
@@ -238,7 +289,7 @@ def car(name, color, style="sedan"):
 
 def build_props():
     clear()
-    items = [tree(), bench(), bin_(), car("car_a", "#8a2f3a", "sedan"), car("car_b", "#2f5a8a", "hatch"), car("car_c", "#b8b3a2", "suv")]
+    items = [tree(), tree_b(), bench(), bin_(), car("car_a", "#8a2f3a", "sedan"), car("car_b", "#2f5a8a", "hatch"), car("car_c", "#b8b3a2", "suv")]
     for i, o in enumerate(items):
         o.location = (i * 6, 0, 0)
     export(os.path.join(OUT, "props.glb"), items)
@@ -302,6 +353,35 @@ def build_room():
             h = 0.28 + random.random() * 0.12
             P.append(box((0.24, w, h), (-3.75, y, z0 + h / 2), mat("book", random.choice(book_cols), 0.8)))
             y += w + 0.012
+    # второй шкаф — у задней стены слева от окна (виден сразу при входе)
+    P.append(box((1.5, 0.35, 2.3), (-3.1, 3.82, 1.15), dark_wood))
+    for z in (0.5, 1.1, 1.7):
+        P.append(box((1.45, 0.38, 0.04), (-3.1, 3.8, z), wood))
+    for z0 in (0.54, 1.14, 1.74):
+        x = -3.78
+        while x < -2.45:
+            w = 0.05 + random.random() * 0.05
+            h = 0.27 + random.random() * 0.13
+            P.append(box((w, 0.24, h), (x, 3.7, z0 + h / 2), mat("book", random.choice(book_cols), 0.8)))
+            x += w + 0.012
+    # люстра: цепь, розетка, кольцо, шесть рожков с лампами, подвеска
+    gold = mat("gold", "#b8923a", 0.35, metal=0.9)
+    bulb = mat("bulb", "#ffe3a8", 0.4, "#ffcf7a", 7.0)
+    cx, cy = 0.0, 1.5  # blender (x, y) = three (x, -z)
+    P.append(cyl(0.14, 0.04, (cx, cy, 3.98), gold, verts=16))
+    P.append(cyl(0.012, 0.6, (cx, cy, 3.66), gold, verts=6))
+    bpy.ops.mesh.primitive_torus_add(major_radius=0.36, minor_radius=0.025, major_segments=24, minor_segments=8, location=(cx, cy, 3.36))
+    P.append(finish(bpy.context.active_object, gold))
+    for k in range(6):
+        ang = k * math.pi / 3
+        ax, ay = cx + math.cos(ang) * 0.36, cy + math.sin(ang) * 0.36
+        P.append(cyl(0.012, 0.22, (ax, ay, 3.46), gold, verts=6))
+        P.append(cyl(0.035, 0.05, (ax, ay, 3.57), gold, verts=8))
+        P.append(ico(0.045, (ax, ay, 3.64), bulb, sub=1, squash=1.5))
+        # хрустальная подвеска
+        P.append(ico(0.025, (cx + math.cos(ang + 0.5) * 0.3, cy + math.sin(ang + 0.5) * 0.3, 3.28), mat("crystal", "#cfe6ff", 0.1, "#9cc8ff", 0.8), sub=1))
+    P.append(cyl(0.012, 0.18, (cx, cy, 3.25), gold, verts=6))
+    P.append(ico(0.07, (cx, cy, 3.12), bulb, sub=1))
     # растение в углу справа
     P.append(cyl(0.25, 0.42, (3.3, 3.3, 0.21), pot, verts=10))
     for i, (dx, dy, dz, r) in enumerate([(0, 0, 0.85, 0.42), (0.18, 0.1, 1.2, 0.3), (-0.15, -0.1, 1.05, 0.32)]):

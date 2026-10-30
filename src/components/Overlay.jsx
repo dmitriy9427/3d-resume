@@ -1,7 +1,7 @@
 import { useEffect, useRef } from "react";
 import { STOPS } from "../data/resume";
 import { scrollState, useSceneStore } from "../store/useSceneStore";
-import { stopProgress } from "../utils/cameraPath";
+import { stopScroll } from "../utils/cameraPath";
 
 export default function Overlay() {
   const active = useSceneStore((s) => s.activeStop);
@@ -20,7 +20,7 @@ export default function Overlay() {
 
   const goTo = (i) => {
     const max = document.documentElement.scrollHeight - window.innerHeight;
-    window.scrollTo({ top: stopProgress(i) * max, behavior: "smooth" });
+    window.scrollTo({ top: stopScroll(i) * max, behavior: "smooth" });
   };
 
   return (

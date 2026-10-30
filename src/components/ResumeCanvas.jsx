@@ -21,7 +21,7 @@ export default function ResumeCanvas() {
           camera={{
             position: [INTRO_CAM.x, INTRO_CAM.y, INTRO_CAM.z],
             fov: 55,
-            near: 0.1,
+            near: 0.25,
             far: 700,
           }}
           gl={{ antialias: !small, powerPreference: "high-performance" }}
