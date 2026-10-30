@@ -374,37 +374,65 @@ function wrap(ctx, text, maxWidth) {
   return lines;
 }
 
-function signTexture(stop) {
-  const c = document.createElement("canvas");
-  c.width = 1024;
-  c.height = 512;
-  const g = c.getContext("2d");
+// Вывеска: скриншот проекта (если есть) с подписью поверх. Рисуется на canvas
+// 768×384 в «дизайн-координатах» 1024×512; скриншот подгружается позже.
+function drawSign(g, stop, img) {
+  g.setTransform(0.75, 0, 0, 0.75, 0, 0);
   g.fillStyle = "#070b1c";
   g.fillRect(0, 0, 1024, 512);
+  if (img) {
+    const k = Math.max(1024 / img.width, 512 / img.height);
+    const w = img.width * k;
+    const h = img.height * k;
+    g.drawImage(img, (1024 - w) / 2, 0, w, h);
+    const grad = g.createLinearGradient(0, 230, 0, 512);
+    grad.addColorStop(0, "rgba(7,11,28,0)");
+    grad.addColorStop(0.55, "rgba(7,11,28,0.88)");
+    grad.addColorStop(1, "rgba(7,11,28,0.96)");
+    g.fillStyle = grad;
+    g.fillRect(0, 230, 1024, 282);
+  }
   g.strokeStyle = stop.accent;
   g.lineWidth = 10;
   g.strokeRect(14, 14, 996, 484);
   g.fillStyle = stop.accent;
-  g.font = "600 38px ui-monospace, Menlo, monospace";
-  g.fillText(stop.kicker.toUpperCase(), 56, 96);
+  g.font = "600 34px ui-monospace, Menlo, monospace";
+  g.fillText(stop.kicker.toUpperCase(), 56, img ? 366 : 96);
   g.fillStyle = "#f2f6ff";
-  g.font = "700 104px system-ui, sans-serif";
-  let size = 104;
+  let size = img ? 64 : 104;
+  g.font = `700 ${size}px system-ui, sans-serif`;
   let lines = wrap(g, stop.title, 900);
-  while (lines.length > 2 && size > 56) {
-    size -= 8;
+  while (lines.length > (img ? 1 : 2) && size > 44) {
+    size -= 6;
     g.font = `700 ${size}px system-ui, sans-serif`;
     lines = wrap(g, stop.title, 900);
   }
-  lines.slice(0, 2).forEach((l, i) => g.fillText(l, 56, 220 + i * (size + 8)));
-  if (stop.stack) {
+  const y0 = img ? 440 : 220;
+  lines.slice(0, img ? 1 : 2).forEach((l, i) => g.fillText(l, 56, y0 + i * (size + 8)));
+  if (!img && stop.stack) {
     g.fillStyle = "rgba(200,215,255,0.7)";
     g.font = "500 36px system-ui, sans-serif";
     g.fillText(stop.stack, 56, 460);
   }
+}
+
+function signTexture(stop) {
+  const c = document.createElement("canvas");
+  c.width = 768;
+  c.height = 384;
+  const g = c.getContext("2d");
+  drawSign(g, stop, null);
   const t = new THREE.CanvasTexture(c);
   t.colorSpace = THREE.SRGBColorSpace;
   t.anisotropy = 8;
+  if (stop.image) {
+    const img = new Image();
+    img.onload = () => {
+      drawSign(g, stop, img);
+      t.needsUpdate = true;
+    };
+    img.src = stop.image;
+  }
   return t;
 }
 

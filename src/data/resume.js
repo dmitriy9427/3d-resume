@@ -19,6 +19,7 @@ export const STOPS = [
   },
   {
     id: "miet",
+    image: "/signs/miet.webp",
     side: "right",
     kicker: "Сайт · 2025",
     title: "МИЭТ",
@@ -29,6 +30,7 @@ export const STOPS = [
   },
   {
     id: "bgsha",
+    image: "/signs/bgsha.webp",
     side: "left",
     kicker: "Сайт · 2025",
     title: "Бурятская ГСХА",
@@ -39,6 +41,7 @@ export const STOPS = [
   },
   {
     id: "medmol",
+    image: "/signs/medmol.webp",
     side: "right",
     kicker: "Портал · 2026",
     title: "Молодёжный портал ВолгГМУ",
@@ -49,6 +52,7 @@ export const STOPS = [
   },
   {
     id: "potok",
+    image: "/signs/potok.webp",
     side: "left",
     kicker: "Пет-проект",
     title: "Поток",
@@ -58,6 +62,7 @@ export const STOPS = [
   },
   {
     id: "tropa",
+    image: "/signs/tropa.webp",
     side: "right",
     kicker: "Пет-проект",
     title: "Тропа",
@@ -67,6 +72,7 @@ export const STOPS = [
   },
   {
     id: "resonance",
+    image: "/signs/resonance.webp",
     side: "left",
     kicker: "Пет-проект",
     title: "Резонанс",
@@ -76,6 +82,7 @@ export const STOPS = [
   },
   {
     id: "konstruktor",
+    image: "/signs/konstruktor.webp",
     side: "right",
     kicker: "Пет-проект",
     title: "3D-конструктор",
@@ -85,6 +92,7 @@ export const STOPS = [
   },
   {
     id: "propusk",
+    image: "/signs/propusk.webp",
     side: "left",
     kicker: "Пет-проект",
     title: "Пропуск",
@@ -94,6 +102,7 @@ export const STOPS = [
   },
   {
     id: "prilavok",
+    image: "/signs/prilavok.webp",
     side: "right",
     kicker: "Пет-проект",
     title: "Прилавок",
