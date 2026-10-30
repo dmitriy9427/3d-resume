@@ -1,5 +1,6 @@
 import { Plane, useGLTF } from "@react-three/drei";
 import { useMemo } from "react";
+import { ROOM_FLOOR } from "../utils/cameraPath";
 import * as THREE from "three";
 
 const ROOM_W = 8;
@@ -127,7 +128,7 @@ export default function IntroScene() {
   const wallMap = usePlasterWallTexture();
 
   return (
-    <>
+    <group position={[0, ROOM_FLOOR, 0]}>
       {/* пол */}
       <Plane
         args={[ROOM_W, ROOM_W]}
@@ -199,6 +200,6 @@ export default function IntroScene() {
         decay={1.4}
       />
 
-    </>
+    </group>
   );
 }

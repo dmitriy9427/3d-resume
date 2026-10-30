@@ -1,10 +1,14 @@
 import { useEffect, useMemo } from "react";
+import { useFrame } from "@react-three/fiber";
 import * as THREE from "three";
 import { STOPS } from "../data/resume";
 import {
+  CROSS_Z,
   EDGE,
   HERO_LEN,
+  PROMENADE_END,
   ROAD_HALF,
+  SAND_END,
   STREET_END,
   stopZ,
 } from "../utils/cameraPath";
@@ -112,8 +116,8 @@ function buildBuildings() {
 
   for (const side of [-1, 1]) {
     // первый ряд — по линии фасадов
-    let z = 0;
-    while (z > STREET_END - 20) {
+    let z = CROSS_Z - 7;
+    while (z > STREET_END + 26) {
       const len = 7 + rand() * 7;
       const w = 9 + rand() * 8;
       const h = 9 + rand() * 26;
@@ -125,8 +129,8 @@ function buildBuildings() {
       z -= len + rand() * 1.6;
     }
     // второй ряд — выше, за первым
-    z = 0;
-    while (z > STREET_END - 40) {
+    z = CROSS_Z - 7;
+    while (z > STREET_END + 16) {
       const len = 10 + rand() * 8;
       const w = 12 + rand() * 10;
       items.push({
@@ -139,8 +143,8 @@ function buildBuildings() {
       z -= len + rand() * 2;
     }
     // дальний силуэт
-    z = 20;
-    while (z > STREET_END - 80) {
+    z = CROSS_Z - 7;
+    while (z > STREET_END + 8) {
       const len = 14 + rand() * 10;
       const w = 20 + rand() * 14;
       items.push({
@@ -166,17 +170,9 @@ function buildBuildings() {
       d: HERO_LEN,
     });
   });
-  // дальний «торец» улицы, ниже луны
-  for (let x = -130; x <= 130; x += 24 + rand() * 10) {
-    if (Math.abs(x) < 40 && rand() > 0.35) continue;
-    items.push({
-      x,
-      z: STREET_END - 110 - rand() * 30,
-      w: 18 + rand() * 14,
-      h: 20 + rand() * 40,
-      d: 20,
-    });
-  }
+  // дом, в котором комната: длинный низкий корпус на торце улицы, за перекрёстком.
+  // Комната стоит на его крыше (ROOM_FLOOR = высота корпуса).
+  items.push({ x: 0, z: 6, w: 160, h: 7, d: 20 });
   return items;
 }
 
@@ -253,17 +249,174 @@ function useRoadTexture() {
   }, []);
 }
 
+function useCrossTexture() {
+  return useMemo(() => {
+    const c = document.createElement("canvas");
+    c.width = 512;
+    c.height = 128;
+    const g = c.getContext("2d");
+    g.fillStyle = "#23262f";
+    g.fillRect(0, 0, 512, 128);
+    g.fillStyle = "#d9d2b0";
+    for (let i = 0; i < 5; i++) g.fillRect(i * 102.4, 63, 51, 3);
+    g.fillStyle = "rgba(217,210,176,0.7)";
+    g.fillRect(0, 5, 512, 2);
+    g.fillRect(0, 121, 512, 2);
+    for (let i = 0; i < 2500; i++) {
+      g.fillStyle = Math.random() > 0.5 ? "rgba(255,255,255,0.045)" : "rgba(0,0,0,0.08)";
+      g.fillRect(Math.random() * 512, Math.random() * 128, 1.5, 1.5);
+    }
+    const t = new THREE.CanvasTexture(c);
+    t.colorSpace = THREE.SRGBColorSpace;
+    t.wrapS = t.wrapT = THREE.RepeatWrapping;
+    t.repeat.set(8, 1);
+    t.anisotropy = 8;
+    return t;
+  }, []);
+}
+
 function Road() {
   const map = useRoadTexture();
-  const length = Math.abs(STREET_END) + 140;
+  const cross = useCrossTexture();
+  const length = 10 - STREET_END;
   useEffect(() => {
     map.repeat.set(1, length / 40);
   }, [map, length]);
   return (
-    <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0, -length / 2 + 20]}>
-      <planeGeometry args={[40, length]} />
-      <meshStandardMaterial map={map} roughness={0.55} metalness={0.1} />
-    </mesh>
+    <>
+      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0, (10 + STREET_END) / 2]}>
+        <planeGeometry args={[40, length]} />
+        <meshStandardMaterial map={map} roughness={0.55} metalness={0.1} />
+      </mesh>
+      {/* поперечная улица у дома */}
+      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.004, CROSS_Z]}>
+        <planeGeometry args={[160, ROAD_HALF * 2]} />
+        <meshStandardMaterial map={cross} roughness={0.55} metalness={0.1} />
+      </mesh>
+    </>
+  );
+}
+
+// ─── Набережная, пляж, пирс и море ──────────────────────────────────────────
+const seaMaterial = new THREE.ShaderMaterial({
+  uniforms: {
+    uTime: { value: 0 },
+    uMoonDir: { value: MOON_DIR.clone() },
+    uFog: { value: new THREE.Color(FOG_COLOR) },
+    uFogDensity: { value: FOG_DENSITY * 0.7 },
+    uShore: { value: SAND_END },
+  },
+  vertexShader: /* glsl */ `
+    varying vec3 vWorld;
+    void main() {
+      vec4 wp = modelMatrix * vec4(position, 1.0);
+      vWorld = wp.xyz;
+      gl_Position = projectionMatrix * viewMatrix * wp;
+    }
+  `,
+  fragmentShader: /* glsl */ `
+    varying vec3 vWorld;
+    uniform float uTime;
+    uniform vec3 uMoonDir;
+    uniform vec3 uFog;
+    uniform float uFogDensity;
+    uniform float uShore;
+    void main() {
+      vec3 V = normalize(vWorld - cameraPosition);
+      vec2 p = vWorld.xz * 0.45;
+      float t = uTime * 0.7;
+      vec3 n = normalize(vec3(
+        0.06 * sin(p.x * 1.7 + t) + 0.045 * sin(p.y * 2.3 - t * 1.3) + 0.03 * sin(p.x * 4.1 + p.y * 3.3 + t * 1.7),
+        1.0,
+        0.06 * cos(p.y * 1.4 + t * 0.9) + 0.04 * sin(p.x * 2.9 + t * 1.1) + 0.03 * cos(p.x * 3.7 - p.y * 4.3 - t * 1.5)));
+      vec3 R = reflect(V, n);
+      float moon = max(dot(R, uMoonDir), 0.0);
+      float glint = pow(moon, 260.0) * 3.0 + pow(moon, 40.0) * 0.28;
+      float fres = pow(1.0 - max(dot(-V, n), 0.0), 3.0);
+      vec3 deep = vec3(0.012, 0.025, 0.07);
+      vec3 sky = vec3(0.09, 0.11, 0.26);
+      vec3 col = mix(deep, sky, clamp(fres * 1.3, 0.0, 1.0));
+      col += vec3(1.0, 0.96, 0.82) * glint;
+      // пена у берега
+      float d = uShore - vWorld.z;
+      float foam = (1.0 - smoothstep(0.0, 2.6, d)) * (0.55 + 0.45 * sin(vWorld.x * 0.5 + t * 1.4 + d * 2.0));
+      col += vec3(0.55, 0.62, 0.8) * foam * 0.6 * step(0.0, d);
+      float dist = length(vWorld - cameraPosition);
+      float f = 1.0 - exp(-pow(uFogDensity * dist, 2.0));
+      col = mix(col, uFog, clamp(f, 0.0, 1.0));
+      gl_FragColor = vec4(col, 1.0);
+      #include <colorspace_fragment>
+    }
+  `,
+});
+
+function speckle(base, a, b, count, size = 512) {
+  const c = document.createElement("canvas");
+  c.width = c.height = size;
+  const g = c.getContext("2d");
+  g.fillStyle = base;
+  g.fillRect(0, 0, size, size);
+  for (let i = 0; i < count; i++) {
+    g.fillStyle = Math.random() > 0.5 ? a : b;
+    g.fillRect(Math.random() * size, Math.random() * size, 2, 2);
+  }
+  const t = new THREE.CanvasTexture(c);
+  t.colorSpace = THREE.SRGBColorSpace;
+  t.wrapS = t.wrapT = THREE.RepeatWrapping;
+  return t;
+}
+
+function Seaside() {
+  const sand = useMemo(() => {
+    const t = speckle("#6b6679", "rgba(255,255,255,0.08)", "rgba(0,0,0,0.12)", 14000);
+    t.repeat.set(16, 3);
+    return t;
+  }, []);
+  const stone = useMemo(() => {
+    const t = speckle("#3e4256", "rgba(255,255,255,0.05)", "rgba(0,0,0,0.1)", 6000);
+    t.repeat.set(10, 2);
+    return t;
+  }, []);
+  useFrame(({ clock }) => {
+    seaMaterial.uniforms.uTime.value = clock.elapsedTime;
+  });
+  const promLen = STREET_END - PROMENADE_END;
+  const sandLen = PROMENADE_END - SAND_END;
+  const pierEnd = SAND_END - 70;
+  const posts = [];
+  for (let z = SAND_END - 2; z > pierEnd; z -= 6) posts.push(z);
+  return (
+    <>
+      {/* набережная */}
+      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.003, STREET_END - promLen / 2]}>
+        <planeGeometry args={[160, promLen]} />
+        <meshStandardMaterial map={stone} roughness={0.8} />
+      </mesh>
+      {/* пляж */}
+      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -0.04, PROMENADE_END - sandLen / 2]}>
+        <planeGeometry args={[160, sandLen]} />
+        <meshStandardMaterial map={sand} roughness={1} />
+      </mesh>
+      {/* море */}
+      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -0.5, SAND_END - 450]} material={seaMaterial}>
+        <planeGeometry args={[1400, 900]} />
+      </mesh>
+      {/* пирс */}
+      <mesh position={[0, 0.1, (SAND_END + pierEnd) / 2]}>
+        <boxGeometry args={[3.4, 0.22, SAND_END - pierEnd + 4]} />
+        <meshStandardMaterial color="#4a3a30" roughness={0.9} />
+      </mesh>
+      {posts.map((z) => (
+        <group key={z}>
+          {[-1.6, 1.6].map((x) => (
+            <mesh key={x} position={[x, -0.2, z]}>
+              <cylinderGeometry args={[0.14, 0.14, 1.6, 6]} />
+              <meshStandardMaterial color="#2c2320" roughness={1} />
+            </mesh>
+          ))}
+        </group>
+      ))}
+    </>
   );
 }
 
@@ -286,7 +439,7 @@ function glowTexture() {
 function Lamps() {
   const lamps = useMemo(() => {
     const out = [];
-    for (let z = -6, i = 0; z > STREET_END - 10; z -= 16, i++) {
+    for (let z = -22, i = 0; z > PROMENADE_END + 2; z -= 16, i++) {
       out.push({ x: (i % 2 ? 1 : -1) * (ROAD_HALF + 0.5), z });
     }
     return out;
@@ -485,6 +638,7 @@ export default function Street() {
         intensity={1.3}
       />
       <Road />
+      <Seaside />
       <Buildings />
       <Lamps />
       <Props />

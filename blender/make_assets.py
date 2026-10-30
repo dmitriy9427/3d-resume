@@ -144,29 +144,101 @@ def bin_():
     return join(parts, "bin")
 
 
-def car(name, color):
-    body = mat("car_" + color, color, 0.35, metal=0.5)
-    glass = mat("glass", "#0b1222", 0.15, metal=0.2)
+def extrude_poly(pts, width, m, name="p", bevel=0.0):
+    """Профиль в плоскости (y, z), выдавленный по x на ширину width."""
+    import bmesh
+    me = bpy.data.meshes.new(name)
+    o = bpy.data.objects.new(name, me)
+    bpy.context.collection.objects.link(o)
+    bm = bmesh.new()
+    hw = width / 2
+    left = [bm.verts.new((-hw, y, z)) for y, z in pts]
+    right = [bm.verts.new((hw, y, z)) for y, z in pts]
+    bm.faces.new(left[::-1])
+    bm.faces.new(right)
+    n = len(pts)
+    for k in range(n):
+        a, b = k, (k + 1) % n
+        bm.faces.new((left[a], left[b], right[b], right[a]))
+    bmesh.ops.recalc_face_normals(bm, faces=bm.faces)
+    bm.to_mesh(me)
+    bm.free()
+    finish(o, m)
+    if bevel:
+        mod = o.modifiers.new("b", "BEVEL")
+        mod.width = bevel
+        mod.segments = 2
+        mod.limit_method = "ANGLE"
+        bpy.context.view_layer.objects.active = o
+        bpy.ops.object.modifier_apply(modifier="b")
+    return o
+
+
+CAR_STYLES = {
+    # lower — силуэт кузова до линии окон, glass — «аквариум» стёкол, roof — (y0, y1, z)
+    "sedan": dict(
+        lower=[(2.2, 0.30), (2.2, 0.74), (1.95, 0.86), (0.95, 0.93), (-1.3, 0.93), (-1.95, 0.9), (-2.2, 0.82), (-2.2, 0.30)],
+        glass=[(0.95, 0.93), (0.30, 1.42), (-0.95, 1.42), (-1.5, 0.93)],
+        roof=(-0.95, 0.30, 1.42), r=0.33, clear=0.0),
+    "hatch": dict(
+        lower=[(1.95, 0.30), (1.95, 0.72), (1.7, 0.86), (0.85, 0.93), (-1.9, 0.93), (-1.95, 0.80), (-1.95, 0.30)],
+        glass=[(0.85, 0.93), (0.30, 1.46), (-1.55, 1.46), (-1.92, 0.95)],
+        roof=(-1.55, 0.30, 1.46), r=0.31, clear=0.0),
+    "suv": dict(
+        lower=[(2.25, 0.42), (2.25, 0.92), (2.0, 1.04), (0.95, 1.1), (-2.1, 1.1), (-2.28, 1.0), (-2.28, 0.42)],
+        glass=[(0.95, 1.1), (0.5, 1.72), (-1.95, 1.72), (-2.15, 1.1)],
+        roof=(-1.95, 0.5, 1.72), r=0.38, clear=0.1),
+}
+
+
+def car(name, color, style="sedan"):
+    st = CAR_STYLES[style]
+    body = mat("car_" + color, color, 0.3, metal=0.6)
+    glass = mat("glass", "#0a1020", 0.1, metal=0.3)
     black = mat("rubber", "#0a0a0d", 0.9)
+    trim = mat("trim", "#15161c", 0.5)
+    rim = mat("rim", "#9aa0b0", 0.3, metal=0.9)
     head = mat("headlight", "#fff2cf", 0.3, "#fff2cf", 4.0)
     tail = mat("taillight", "#ff2a2a", 0.3, "#ff2a2a", 3.0)
+    plate = mat("plate", "#e8e6dc", 0.6)
+    lo = st["lower"]
+    front = max(p[0] for p in lo)
+    rear = min(p[0] for p in lo)
+    top = max(p[1] for p in st["glass"])
+    r = st["r"]
     parts = [
-        box((1.8, 4.3, 0.62), (0, 0, 0.62), body, bevel=0.14),
-        box((1.62, 2.2, 0.55), (0, -0.25, 1.15), glass, bevel=0.12),
-        box((1.5, 1.9, 0.08), (0, -0.25, 1.46), body, bevel=0.03),
+        extrude_poly(lo, 1.82, body, "body", bevel=0.07),
+        extrude_poly(st["glass"], 1.64, glass, "glass", bevel=0.03),
+        extrude_poly([(st["roof"][0] - 0.02, top - 0.02), (st["roof"][1] + 0.02, top - 0.02), (st["roof"][1], top + 0.05), (st["roof"][0], top + 0.05)], 1.58, body, "roof", bevel=0.02),
     ]
+    # колёса с дисками
+    wz = r
+    for x in (-0.92, 0.92):
+        for y in (front - 0.85, rear + 0.85):
+            parts.append(cyl(r, 0.24, (x, y, wz), black, rot=(0, math.radians(90), 0), verts=14))
+            parts.append(cyl(r * 0.62, 0.26, (x + (0.015 if x > 0 else -0.015), y, wz), rim, rot=(0, math.radians(90), 0), verts=10))
+    # арки: тёмные вставки над колёсами
+    for x in (-0.905, 0.905):
+        for y in (front - 0.85, rear + 0.85):
+            parts.append(box((0.04, r * 2.5, r * 1.1), (x, y, wz + r * 0.85), trim))
+    # бамперы, решётка, зеркала, номера
+    parts.append(box((1.84, 0.14, 0.26), (0, front - 0.03, 0.46 + st["clear"]), trim, bevel=0.03))
+    parts.append(box((1.84, 0.14, 0.26), (0, rear + 0.03, 0.46 + st["clear"]), trim, bevel=0.03))
+    parts.append(box((0.8, 0.05, 0.16), (0, front + 0.0, 0.7 + st["clear"]), trim))
     for x in (-0.95, 0.95):
-        for y in (-1.35, 1.35):
-            parts.append(cyl(0.34, 0.24, (x, y, 0.34), black, rot=(0, math.radians(90), 0), verts=10))
-    for x in (-0.6, 0.6):
-        parts.append(box((0.38, 0.06, 0.16), (x, 2.16, 0.7), head))
-        parts.append(box((0.38, 0.06, 0.14), (x, -2.16, 0.74), tail))
+        parts.append(box((0.12, 0.2, 0.1), (x, st["glass"][0][0] - 0.25, st["glass"][0][1] + 0.05), body))
+    parts.append(box((0.5, 0.02, 0.12), (0, front + 0.05, 0.42 + st["clear"]), plate))
+    parts.append(box((0.5, 0.02, 0.12), (0, rear - 0.05, 0.5 + st["clear"]), plate))
+    # фары и задние огни
+    for x in (-0.62, 0.62):
+        parts.append(box((0.42, 0.06, 0.13), (x, front - 0.01, 0.74 + st["clear"]), head, bevel=0.015))
+    parts.append(box((1.6, 0.05, 0.1), (0, rear + 0.0, 0.78 + st["clear"]), tail))
     return join(parts, name)
 
 
 def build_props():
     clear()
-    items = [tree(), bench(), bin_(), car("car_a", "#8a2f3a"), car("car_b", "#2f5a8a"), car("car_c", "#b8b3a2")]
+    items = [tree(), bench(), bin_(), car("car_a", "#8a2f3a", "sedan"), car("car_b", "#2f5a8a", "hatch"), car("car_c", "#b8b3a2", "suv")]
     for i, o in enumerate(items):
         o.location = (i * 6, 0, 0)
     export(os.path.join(OUT, "props.glb"), items)

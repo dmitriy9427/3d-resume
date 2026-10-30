@@ -3,7 +3,7 @@ import { useFrame } from "@react-three/fiber";
 import * as THREE from "three";
 
 // Направление на луну (она впереди над улицей) и её расстояние.
-export const MOON_DIR = new THREE.Vector3(-0.18, 0.55, -1).normalize();
+export const MOON_DIR = new THREE.Vector3(-0.18, 0.5, -1).normalize();
 const MOON_DIST = 360;
 
 const skyMaterial = new THREE.ShaderMaterial({
