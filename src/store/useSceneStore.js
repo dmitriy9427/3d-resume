@@ -6,6 +6,14 @@ export const useSceneStore = create((set) => ({
   // сцена построена и несколько кадров отрисовано — прелоадер можно «сжигать»
   ready: false,
   setReady: (ready) => set({ ready }),
+  // ── рыбалка (только то, что меняется редко; покадровое — в game/fishingRuntime.js)
+  fishing: false,
+  setFishing: (fishing) => set({ fishing }),
+  fishView: { phase: "idle", message: "", result: null },
+  setFishView: (fishView) => set({ fishView }),
+  caught: {}, // id рыбы → лучший вес
+  addCatch: ({ fish, kg }) =>
+    set((s) => ({ caught: { ...s.caught, [fish.id]: Math.max(kg, s.caught[fish.id] ?? 0) } })),
 }));
 
 // Прогресс прокрутки: target — по странице, current — со сглаживанием.

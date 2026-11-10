@@ -3,9 +3,11 @@ import { STOPS } from "../data/resume";
 import { scrollState, useSceneStore } from "../store/useSceneStore";
 import { stopScroll } from "../utils/cameraPath";
 import { asset } from "../utils/url";
+import FishingHud from "./FishingHud";
 
 export default function Overlay() {
   const active = useSceneStore((s) => s.activeStop);
+  const fishing = useSceneStore((s) => s.fishing);
   const [open, setOpen] = useState(false);
   // при смене остановки карточка снова сворачивается
   useEffect(() => setOpen(false), [active]);
@@ -28,7 +30,7 @@ export default function Overlay() {
   };
 
   return (
-    <div className="hud">
+    <div className={`hud ${fishing ? "is-fishing" : ""}`}>
       <div className="hud__bar" ref={bar} />
       <a className="hud__text" href={asset("/resume/")}>
         Текстовая версия
@@ -67,6 +69,8 @@ export default function Overlay() {
       ))}
 
       {active === 0 && <div className="hint">Листайте вниз ↓</div>}
+
+      <FishingHud atLastStop={active === STOPS.length - 1} />
 
       <nav className="dots" aria-label="Остановки">
         {STOPS.map((s, i) => (

@@ -240,3 +240,168 @@
     display: none;
   }
 }
+
+/* ─── Рыбалка ─────────────────────────────────────────────────────────────── */
+/* карточка «Контакты» стоит справа внизу — кнопка слева, чтобы не перекрывались */
+.fish__start {
+  position: absolute;
+  left: 6vw;
+  bottom: 12vh;
+  pointer-events: auto;
+  padding: 0.8em 1.4em;
+  font: inherit;
+  font-size: 16px;
+  font-weight: 600;
+  color: #06122a;
+  background: linear-gradient(90deg, #8fd0ff, #b9a2ff);
+  border: 0;
+  border-radius: 999px;
+  box-shadow: 0 0 32px rgba(120, 180, 255, 0.45);
+  cursor: pointer;
+  animation: fish-in 0.5s both;
+}
+@keyframes fish-in {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+}
+/* на телефоне карточка занимает весь низ — кнопка уходит наверх */
+@media (max-width: 767px) {
+  .fish__start {
+    left: 16px;
+    top: 16px;
+    bottom: auto;
+    font-size: 14px;
+  }
+}
+/* во время игры карточки резюме, точки и подсказка не нужны */
+.hud.is-fishing .card,
+.hud.is-fishing .dots,
+.hud.is-fishing .hint,
+.hud.is-fishing .hud__text {
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+}
+.fish__pad {
+  position: absolute;
+  inset: 0;
+  pointer-events: auto;
+  touch-action: none; /* удержание пальца — это «держу леску», а не прокрутка */
+  user-select: none;
+  -webkit-user-select: none;
+  cursor: pointer;
+}
+.fish__panel {
+  position: absolute;
+  left: 50%;
+  bottom: 7vh;
+  width: min(420px, 88vw);
+  transform: translateX(-50%);
+  display: grid;
+  gap: 10px;
+  pointer-events: none; /* нажатия проходят сквозь панель на .fish__pad */
+  text-align: center;
+}
+.fish__msg {
+  margin: 0;
+  min-height: 1.4em;
+  font-size: 16px;
+  text-shadow: 0 1px 8px #000;
+}
+.fish__panel.is-bite .fish__msg {
+  font-size: 26px;
+  font-weight: 800;
+  color: #ffd23d;
+  animation: fish-bite 0.25s ease-in-out infinite alternate;
+}
+@keyframes fish-bite {
+  to {
+    transform: scale(1.12);
+  }
+}
+.fish__panel.is-lost .fish__msg {
+  color: #ff9d8a;
+}
+.fish__bar {
+  height: 14px;
+  overflow: hidden;
+  background: rgba(8, 13, 32, 0.7);
+  border: 1px solid rgba(160, 200, 255, 0.4);
+  border-radius: 999px;
+}
+.fish__bar i {
+  display: block;
+  height: 100%;
+  background: linear-gradient(90deg, #6aa9ff, #b48cff);
+  transform-origin: left;
+  transform: scaleX(0);
+}
+.fish__bar--thin {
+  height: 6px;
+}
+.fish__catch {
+  position: absolute;
+  left: 50%;
+  bottom: 6vh; /* внизу: в центре кадра в это время висит сама рыба */
+  width: min(340px, 86vw);
+  padding: 1.2em 1.4em;
+  transform: translateX(-50%);
+  pointer-events: none;
+  text-align: center;
+  background: rgba(8, 13, 32, 0.86);
+  border: 1px solid color-mix(in srgb, var(--accent) 60%, transparent);
+  border-radius: 16px;
+  box-shadow: 0 0 44px color-mix(in srgb, var(--accent) 30%, transparent);
+  animation: fish-catch 0.45s cubic-bezier(0.2, 1.4, 0.4, 1) both;
+}
+@keyframes fish-catch {
+  from {
+    opacity: 0;
+    transform: translate(-50%, 20px) scale(0.9);
+  }
+}
+.fish__icon {
+  width: 84px;
+}
+/* карточка улова занимает место подсказки */
+.fish__panel.is-caught {
+  display: none;
+}
+.fish__more {
+  margin: 0.8em 0 0;
+  font-size: 13px;
+  color: rgba(200, 220, 255, 0.7);
+}
+.fish__top {
+  position: absolute;
+  top: 16px;
+  left: 16px;
+  right: 16px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  pointer-events: none;
+}
+.fish__count,
+.fish__exit {
+  padding: 0.5em 0.9em;
+  font: inherit;
+  font-size: 13px;
+  color: #bfe6ff;
+  background: rgba(10, 20, 40, 0.6);
+  border: 1px solid rgba(120, 180, 255, 0.35);
+  border-radius: 8px;
+}
+.fish__exit {
+  pointer-events: auto;
+  cursor: pointer;
+}
+@media (prefers-reduced-motion: reduce) {
+  .fish__start,
+  .fish__catch,
+  .fish__panel.is-bite .fish__msg {
+    animation: none;
+  }
+}

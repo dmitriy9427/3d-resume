@@ -12,6 +12,7 @@ import {
   SAND_END,
   STREET_END,
   stopZ,
+  STAIRS,
 } from "../utils/cameraPath";
 import { MOON_DIR } from "./Sky";
 import Props from "./Props";
@@ -247,7 +248,17 @@ function buildBuildings() {
   });
   // дом, в котором комната: длинный низкий корпус на торце улицы, за перекрёстком.
   // Комната стоит на его крыше (ROOM_FLOOR = высота корпуса).
-  items.push({ x: 0, z: 6, w: 160, h: ROOM_FLOOR - 0.06, d: 20 });
+  // Корпус собран из трёх коробок, а не из одной: между ними оставлена шахта
+  // лестничной клетки (STAIRS). В цельной коробке её крыша и фасад закрывали бы
+  // лестницу: изнутри коробка невидима (задние грани не рисуются), а вот сверху,
+  // с верхней площадки, была бы видна сплошная крыша вместо пролётов.
+  const h = ROOM_FLOOR - 0.06;
+  const west = STAIRS.xMin - 0.02;
+  const east = STAIRS.xMax;
+  const back = STAIRS.zBack + 0.02;
+  items.push({ x: (-80 + west) / 2, z: 6, w: west + 80, h, d: 20 });
+  items.push({ x: (east + 80) / 2, z: 6, w: 80 - east, h, d: 20 });
+  items.push({ x: (west + east) / 2, z: (back + 16) / 2, w: east - west, h, d: 16 - back });
   return items;
 }
 

@@ -1,8 +1,10 @@
 import { Plane, useGLTF } from "@react-three/drei";
 import { useMemo } from "react";
-import { ROOM_FLOOR } from "../utils/cameraPath";
+import { mergeGeometries } from "three/examples/jsm/utils/BufferGeometryUtils.js";
+import { ROOM_DOOR, ROOM_FLOOR } from "../utils/cameraPath";
 import { asset } from "../utils/url";
 import * as THREE from "three";
+import PlasticWindow from "./PlasticWindow";
 
 const ROOM_W = 8;
 const ROOM_H = 4;
@@ -38,6 +40,31 @@ const backWallSegments = [
     y: (WIN_TOP + WIN_BOTTOM) / 2,
   },
 ];
+
+// Левая стена с дверным проёмом: три прямоугольника вокруг двери, склеенные
+// в одну геометрию. UV считаем от положения точки на всей стене (а не 0..1 на
+// каждый кусок) — тогда обои на кусках совпадают, как на цельной стене.
+function leftWallGeometry() {
+  const z0 = ROOM_DOOR.z - ROOM_DOOR.w / 2;
+  const z1 = ROOM_DOOR.z + ROOM_DOOR.w / 2;
+  const half = ROOM_W / 2;
+  const rects = [
+    [-half, z0, 0, ROOM_H],
+    [z1, half, 0, ROOM_H],
+    [z0, z1, ROOM_DOOR.h, ROOM_H],
+  ];
+  const parts = rects.map(([a, b, y0, y1]) => {
+    const g = new THREE.PlaneGeometry(b - a, y1 - y0);
+    g.rotateY(Math.PI / 2);
+    g.translate(-half, (y0 + y1) / 2, (a + b) / 2);
+    const pos = g.attributes.position;
+    for (let i = 0; i < pos.count; i++) {
+      g.attributes.uv.setXY(i, (pos.getZ(i) + half) / ROOM_W, pos.getY(i) / ROOM_H);
+    }
+    return g;
+  });
+  return mergeGeometries(parts);
+}
 
 // Текстуры генерируются процедурно на canvas: загруженные через TextureLoader
 // файлы (JPEG/PNG, в т.ч. с Poly Haven) в этом WebGL-окружении надёжно ловят
@@ -254,6 +281,7 @@ useGLTF.preload(asset("/models/room.glb"));
 export default function IntroScene() {
   const floorMap = usePlankFloorTexture();
   const wallMap = usePlasterWallTexture();
+  const leftWall = useMemo(leftWallGeometry, []);
 
   return (
     <group position={[0, ROOM_FLOOR + 0.03, 0]}>
@@ -276,13 +304,10 @@ export default function IntroScene() {
       </Plane>
 
       {/* боковые стены */}
-      <Plane
-        args={[ROOM_W, ROOM_H]}
-        rotation={[0, Math.PI / 2, 0]}
-        position={[-ROOM_W / 2, ROOM_H / 2, 0]}
-      >
+      {/* левая стена — с проёмом двери на лестницу */}
+      <mesh geometry={leftWall}>
         <meshStandardMaterial map={wallMap} side={THREE.DoubleSide} />
-      </Plane>
+      </mesh>
       <Plane
         args={[ROOM_W, ROOM_H]}
         rotation={[0, -Math.PI / 2, 0]}
@@ -305,6 +330,7 @@ export default function IntroScene() {
       ))}
 
       <RoomProps />
+      <PlasticWindow />
 
       {/* освещение: three r183+ по умолчанию использует физически корректные
           единицы, поэтому старые "киношные" intensity вроде 2-4 почти не видны —
